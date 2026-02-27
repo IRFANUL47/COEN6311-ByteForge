@@ -1,0 +1,10 @@
+# VS Code
+.vscode/
+
+# Python
+backend/venv/
+backend/__pycache__/
+backend/*.pyc
+backend/db.sqlite3
+backend/.env
+
