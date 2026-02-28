@@ -1,4 +1,4 @@
-# Project COEN6341
+# Project COEN6311
 COEN 6311 – Software Engineering (Winter 2026)
 Concordia University
 
