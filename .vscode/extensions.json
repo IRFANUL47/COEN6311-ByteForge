@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "batisteo.vscode-django",
+    "dsznajder.es7-react-js-snippets",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "ms-python.vscode-pylance",
+    "ms-python.python",
+    "ms-python.debugpy",
+    "ms-python.vscode-python-envs",
+    "qwtel.sqlite-viewer",
+    "rangav.vscode-thunder-client"
+  ]
+}

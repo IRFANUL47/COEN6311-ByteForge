@@ -1,0 +1,10 @@
+{
+  // Update this path to match your local venv location after running: python -m venv venv in the backend folder
+  "python.defaultInterpreterPath": ".\\backend\\venv\\Scripts\\python.exe",
+  "python.terminal.activateEnvironment": true,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[python]": {
+    "editor.defaultFormatter": "ms-python.python"
+  }
+}
