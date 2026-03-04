@@ -24,6 +24,9 @@ Django REST API Backend
 Database (SQLite/PostgreSQL)
 The backend exposes RESTful endpoints and uses JWT authentication for secure access control.
 
+Installation & Setup (In Progress)
+The installation and setup instructions will be added as the backend and frontend implementations progress. 
+
 Long-Term Vision
 CUFitness is designed to be scalable beyond Concordia University and adaptable to other university gym environments. Future improvements include advanced analytics, AI-powered recommendations, and enhanced scheduling intelligence.
 
