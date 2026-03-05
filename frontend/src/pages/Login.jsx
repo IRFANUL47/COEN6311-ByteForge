@@ -1,17 +1,32 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Card, Form, Button } from 'react-bootstrap'
-import concordiaLogo from '../assets/concordia-logo.png'
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Card, Form, Button, Alert } from 'react-bootstrap';
+import concordiaLogo from '../assets/concordia-logo.png';
+import api from '../api/axios';
+import { useAuth } from '../context/auth/useAuth';
 
 function Login() {
-  const [concordiaId, setConcordiaId] = useState('')
-  const [password, setPassword] = useState('')
+  const [concordiaId, setConcordiaId] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    console.log('Login attempted with:', concordiaId)
-    console.log('Password:', password)
-  }
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const response = await api.post('/auth/login/', { concordia_id: concordiaId, password });
+      login(response.data.user, response.data.tokens);
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.response?.data?.detail || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className='cu-auth-page'>
@@ -22,18 +37,38 @@ function Login() {
             <p className='cu-auth-subtitle mb-0'>Sign in to your account</p>
           </div>
 
+          {error && (
+            <Alert variant='danger' className='py-2' style={{ fontSize: '0.88rem' }}>
+              {error}
+            </Alert>
+          )}
+
           <Form onSubmit={handleSubmit}>
             <Form.Group className='mb-3'>
               <Form.Label className='cu-form-label'>Concordia ID</Form.Label>
-              <Form.Control type='text' className='cu-form-input' placeholder='Enter your Concordia ID' value={concordiaId} onChange={(e) => setConcordiaId(e.target.value)} />
+              <Form.Control
+                type='text'
+                className='cu-form-input'
+                placeholder='Enter your Concordia ID'
+                value={concordiaId}
+                onChange={(e) => setConcordiaId(e.target.value)}
+              />
             </Form.Group>
 
             <Form.Group className='mb-4'>
               <Form.Label className='cu-form-label'>Password</Form.Label>
-              <Form.Control type='password' className='cu-form-input' placeholder='Enter your password' value={password} onChange={(e) => setPassword(e.target.value)} />
+              <Form.Control
+                type='password'
+                className='cu-form-input'
+                placeholder='Enter your password'
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </Form.Group>
 
-            <Button type='submit' className='cu-btn-submit w-100'>Sign In</Button>
+            <Button type='submit' className='cu-btn-submit w-100' disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign In'}
+            </Button>
           </Form>
 
           <p className='text-center cu-auth-switch mt-3 mb-0' style={{ fontSize: '0.88rem', color: '#777' }}>
@@ -43,7 +78,7 @@ function Login() {
       </Card>
       <img src={concordiaLogo} alt='Concordia University' className='concordia-logo' />
     </div>
-  )
+  );
 }
 
-export default Login
+export default Login;
