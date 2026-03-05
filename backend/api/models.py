@@ -1,15 +1,14 @@
+from django.contrib.auth.models import AbstractUser
 from django.db import models
-from django.conf import settings
 
-class Profile(models.Model):
+class CustomUser(AbstractUser):
     class Role(models.TextChoices):
         STUDENT = "STUDENT", "Student"
         COACH = "COACH", "Coach"
+        ADMIN = "ADMIN", "Admin"
 
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile"
-    )
-    role = models.CharField(max_length=20, choices=Role.choices)
-
+    role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
+    concordia_id = models.CharField(max_length=10, unique=True)
+    
     def __str__(self) -> str:
-        return f"{self.user.username} ({self.role})"
+        return f"{self.username} ({self.role})"
