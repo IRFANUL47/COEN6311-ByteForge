@@ -32,7 +32,7 @@ CUFitness is designed to be scalable beyond Concordia University and adaptable t
 
 Team Name: ByteForge
 Members:
-IRFANUL ISLAM
-FAROUK IHDENE
-ALI ALHADI AKHRAS
-FARAH ZAGHDANE
+-IRFANUL ISLAM
+-FAROUK IHDENE
+-ALI ALHADI AKHRAS
+-FARAH ZAGHDANE
