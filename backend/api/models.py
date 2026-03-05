@@ -9,6 +9,7 @@ class CustomUser(AbstractUser):
 
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
     concordia_id = models.CharField(max_length=10, unique=True)
+    is_approved = models.BooleanField(default=False)
     
     def __str__(self) -> str:
         return f"{self.username} ({self.role})"

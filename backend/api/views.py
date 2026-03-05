@@ -50,6 +50,7 @@ def login(request):
                 "last_name": user.last_name,
                 "email": user.email,
                 "role": user.role,
+                "is_approved": user.is_approved,
             },
             "tokens": _jwt_for_user(user),
         },
