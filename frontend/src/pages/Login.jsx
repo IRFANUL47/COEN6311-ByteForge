@@ -1,61 +1,49 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import './Auth.css';
-import concordiaLogo from '../assets/concordia-logo.png';
+import { useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Card, Form, Button } from 'react-bootstrap'
+import concordiaLogo from '../assets/concordia-logo.png'
 
 function Login() {
-  const [userId, setUserId] = useState('');
-  const [password, setPassword] = useState('');
+  const [concordiaId, setConcordiaId] = useState('')
+  const [password, setPassword] = useState('')
 
   const handleSubmit = (e) => {
-    e.preventDefault();
-    console.log('Login attempted with:', userId);
-    console.log('Password:', password);
-  };
+    e.preventDefault()
+    console.log('Login attempted with:', concordiaId)
+    console.log('Password:', password)
+  }
 
   return (
-    <div className='auth-page'>
-      <div className='auth-card'>
-        <div className='auth-card-header'>
-          <h2 className='auth-title'>Welcome</h2>
-          <p className='auth-subtitle'>Sign in to your account</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className='auth-form'>
-          <div className='form-group'>
-            <label className='form-label'>User ID</label>
-            <input
-              type='text'
-              className='form-input'
-              placeholder='Enter your user ID'
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-            />
+    <div className='cu-auth-page'>
+      <Card className='cu-auth-card p-4' style={{ width: '100%', maxWidth: '420px' }}>
+        <Card.Body>
+          <div className='text-center mb-4'>
+            <h2 className='cu-auth-title'>Welcome</h2>
+            <p className='cu-auth-subtitle mb-0'>Sign in to your account</p>
           </div>
 
-          <div className='form-group'>
-            <label className='form-label'>Password</label>
-            <input
-              type='password'
-              className='form-input'
-              placeholder='Enter your password'
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+          <Form onSubmit={handleSubmit}>
+            <Form.Group className='mb-3'>
+              <Form.Label className='cu-form-label'>Concordia ID</Form.Label>
+              <Form.Control type='text' className='cu-form-input' placeholder='Enter your Concordia ID' value={concordiaId} onChange={(e) => setConcordiaId(e.target.value)} />
+            </Form.Group>
 
-          <button type='submit' className='auth-btn'>
-            Sign In
-          </button>
-        </form>
+            <Form.Group className='mb-4'>
+              <Form.Label className='cu-form-label'>Password</Form.Label>
+              <Form.Control type='password' className='cu-form-input' placeholder='Enter your password' value={password} onChange={(e) => setPassword(e.target.value)} />
+            </Form.Group>
 
-        <p className='auth-switch'>
-          Don't have an account? <Link to='/register'>Register</Link>
-        </p>
-      </div>
+            <Button type='submit' className='cu-btn-submit w-100'>Sign In</Button>
+          </Form>
+
+          <p className='text-center cu-auth-switch mt-3 mb-0' style={{ fontSize: '0.88rem', color: '#777' }}>
+            Don't have an account? <Link to='/register'>Register</Link>
+          </p>
+        </Card.Body>
+      </Card>
       <img src={concordiaLogo} alt='Concordia University' className='concordia-logo' />
     </div>
-  );
+  )
 }
 
-export default Login;
+export default Login

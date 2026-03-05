@@ -1,37 +1,30 @@
-import { Link, useLocation } from 'react-router-dom';
-import './Navbar.css';
+import { Link, useLocation } from 'react-router-dom'
+import { Navbar, Container, Nav, Button } from 'react-bootstrap'
 
-function Navbar() {
-  const location = useLocation();
+function AppNavbar() {
+  const location = useLocation()
 
   return (
-    <nav className='navbar'>
-      <div className='navbar-left'>
-        <Link to='/' className='navbar-brand'>
-          CUFitness
-        </Link>
-        <div className='navbar-main-links'>
-          <Link to='/' className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>
-            Home
-          </Link>
-          <Link to='/profile' className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
-            Profile
-          </Link>
-          <Link to='/workouts' className={`nav-link ${location.pathname === '/workouts' ? 'active' : ''}`}>
-            Workout Plans
-          </Link>
-        </div>
-      </div>
-      <div className='navbar-right'>
-        <Link to='/register' className={`nav-link ${location.pathname === '/register' ? 'active' : ''}`}>
-          Register
-        </Link>
-        <Link to='/login' className='nav-btn-login'>
-          Login
-        </Link>
-      </div>
-    </nav>
-  );
+    <Navbar className='cu-navbar' expand='md' sticky='top'>
+      <Container fluid className='px-3'>
+        <Link to='/' className='cu-brand me-4'>CUFitness</Link>
+        <Navbar.Toggle aria-controls='main-nav' />
+        <Navbar.Collapse id='main-nav'>
+          <Nav className='me-auto'>
+            <Link to='/' className={`cu-nav-link ${location.pathname === '/' ? 'active' : ''}`}>Home</Link>
+            <Link to='/profile' className={`cu-nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>Profile</Link>
+            <Link to='/workouts' className={`cu-nav-link ${location.pathname === '/workouts' ? 'active' : ''}`}>Workout Plans</Link>
+          </Nav>
+          <Nav className='align-items-center gap-2'>
+            <Link to='/register' className={`cu-nav-link ${location.pathname === '/register' ? 'active' : ''}`}>Register</Link>
+            <Link to='/login'>
+              <Button className='cu-btn-login' size='sm'>Login</Button>
+            </Link>
+          </Nav>
+        </Navbar.Collapse>
+      </Container>
+    </Navbar>
+  )
 }
 
-export default Navbar;
+export default AppNavbar
