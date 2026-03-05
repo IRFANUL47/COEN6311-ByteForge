@@ -1,37 +1,63 @@
-import { Link, useLocation } from 'react-router-dom';
-import './Navbar.css';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Navbar, Container, Nav, Button } from 'react-bootstrap';
+import { useAuth } from '../context/auth/useAuth';
 
-function Navbar() {
+function AppNavbar() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   return (
-    <nav className='navbar'>
-      <div className='navbar-left'>
-        <Link to='/' className='navbar-brand'>
+    <Navbar className='cu-navbar' expand='lg' sticky='top'>
+      <Container fluid className='px-3'>
+        <Link to='/' className='cu-brand me-4'>
           CUFitness
         </Link>
-        <div className='navbar-main-links'>
-          <Link to='/' className={`nav-link ${location.pathname === '/' ? 'active' : ''}`}>
-            Home
-          </Link>
-          <Link to='/profile' className={`nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
-            Profile
-          </Link>
-          <Link to='/workouts' className={`nav-link ${location.pathname === '/workouts' ? 'active' : ''}`}>
-            Workout Plans
-          </Link>
-        </div>
-      </div>
-      <div className='navbar-right'>
-        <Link to='/register' className={`nav-link ${location.pathname === '/register' ? 'active' : ''}`}>
-          Register
-        </Link>
-        <Link to='/login' className='nav-btn-login'>
-          Login
-        </Link>
-      </div>
-    </nav>
+        <Navbar.Toggle aria-controls='main-nav' />
+        <Navbar.Collapse id='main-nav'>
+          {user ? (
+            <>
+              <Nav className='me-auto'>
+                <Link to='/dashboard' className={`cu-nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}>
+                  Home
+                </Link>
+                <Link to='/workouts' className={`cu-nav-link ${location.pathname === '/workouts' ? 'active' : ''}`}>
+                  Workout Plans
+                </Link>
+                <Link to='/profile' className={`cu-nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
+                  Profile
+                </Link>
+              </Nav>
+              <Nav className='align-items-center gap-2'>
+                <Button className='cu-btn-login' size='sm' onClick={handleLogout}>
+                  Logout
+                </Button>
+              </Nav>
+            </>
+          ) : (
+            <>
+              <Nav className='me-auto' />
+              <Nav className='align-items-center gap-2'>
+                <Link to='/register' className={`cu-nav-link ${location.pathname === '/register' ? 'active' : ''}`}>
+                  Register
+                </Link>
+                <Link to='/login'>
+                  <Button className='cu-btn-login' size='sm'>
+                    Login
+                  </Button>
+                </Link>
+              </Nav>
+            </>
+          )}
+        </Navbar.Collapse>
+      </Container>
+    </Navbar>
   );
 }
 
-export default Navbar;
+export default AppNavbar;

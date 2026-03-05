@@ -1,15 +1,47 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Navbar from './components/Navbar';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/auth/useAuth';
+import AppNavbar from './components/Navbar';
+import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
+
+function HomeRedirect() {
+  const { user } = useAuth();
+  return <Navigate to={user ? '/dashboard' : '/login'} />;
+}
 
 function App() {
   return (
     <BrowserRouter>
-      <Navbar />
+      <AppNavbar />
       <Routes>
+        <Route path='/' element={<HomeRedirect />} />
         <Route path='/login' element={<Login />} />
         <Route path='/register' element={<Register />} />
+        <Route
+          path='/dashboard'
+          element={
+            <ProtectedRoute>
+              <div>Dashboard</div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/workouts'
+          element={
+            <ProtectedRoute>
+              <div>Workouts</div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/profile'
+          element={
+            <ProtectedRoute>
+              <div>Profile</div>
+            </ProtectedRoute>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );
