@@ -71,9 +71,9 @@ def update_profile(request):
     if new_email != user.email and User.objects.filter(email__iexact=new_email).exists():
         return Response({"detail": "This email is already in use."}, status=status.HTTP_400_BAD_REQUEST)
 
-    user.first_name = data.get("first_name", user.first_name)
-    user.last_name = data.get("last_name", user.last_name)
-    user.email = new_email
+    user.first_name = data.get("first_name", user.first_name) or user.first_name
+    user.last_name = data.get("last_name", user.last_name) or user.last_name
+    user.email = new_email or user.email
     user.save()
 
     return Response({
