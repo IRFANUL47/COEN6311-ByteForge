@@ -5,6 +5,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import Equipment from './pages/Equipment';
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -40,6 +41,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Profile />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/equipment'
+          element={
+            <ProtectedRoute>
+              <Equipment />
             </ProtectedRoute>
           }
         />

@@ -25,7 +25,6 @@ class Equipment(models.Model):
     name = models.CharField(max_length=100)
     category = models.CharField(max_length=20, choices=Category.choices, default=Category.RAW)
     quantity = models.PositiveIntegerField(default=0)
-    max_quantity = models.PositiveIntegerField(default=0)
 
     def __str__(self):
-        return f"{self.name} ({self.category}) - {self.quantity}/{self.max_quantity}"
+        return f"{self.name} ({self.category})"
