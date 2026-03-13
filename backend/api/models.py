@@ -13,3 +13,19 @@ class CustomUser(AbstractUser):
     
     def __str__(self) -> str:
         return f"{self.username} ({self.role})"
+    
+class Equipment(models.Model):
+    class Category(models.TextChoices):
+        CARDIO = 'CARDIO', 'Cardio'
+        HEAVY = 'HEAVY', 'Power Lifting'
+        CABLES = 'CABLES', 'Cable Towers'
+        MACHINES = 'MACHINES', 'Resistance Machines'
+        RAW = 'RAW', 'Raw Equipment'
+
+    name = models.CharField(max_length=100)
+    category = models.CharField(max_length=20, choices=Category.choices, default=Category.RAW)
+    quantity = models.PositiveIntegerField(default=0)
+    max_quantity = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return f"{self.name} ({self.category}) - {self.quantity}/{self.max_quantity}"
