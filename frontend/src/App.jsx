@@ -4,6 +4,7 @@ import AppNavbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import Profile from './pages/Profile';
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -38,7 +39,7 @@ function App() {
           path='/profile'
           element={
             <ProtectedRoute>
-              <div>Profile</div>
+              <Profile />
             </ProtectedRoute>
           }
         />
