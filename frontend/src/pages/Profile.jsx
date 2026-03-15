@@ -13,10 +13,15 @@ function Profile() {
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
     email: user?.email || '',
+    gender: user?.gender || '',
+    age: user?.age || '',
+    height: user?.height || '',
+    weight: user?.weight || '',
   });
   const [profileError, setProfileError] = useState('');
   const [profileSuccess, setProfileSuccess] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
+  const [bmi, setBmi] = useState(user?.bmi || null);
 
   const [passwordData, setPasswordData] = useState({
     current_password: '',
@@ -29,6 +34,13 @@ function Profile() {
   const [deletePassword, setDeletePassword] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const getBmiColor = (bmi) => {
+    if (bmi < 18.5) return '#e5a712'; // underweight - orange
+    if (bmi < 25) return '#508212'; // normal - green
+    if (bmi < 30) return '#e5a712'; // overweight - orange
+    return '#912338'; // obese - red
+  };
 
   const handleProfileChange = (e) => {
     setProfileData({ ...profileData, [e.target.name]: e.target.value });
@@ -46,6 +58,7 @@ function Profile() {
     try {
       const response = await api.put('/profile/update/', profileData);
       login({ ...user, ...response.data }, JSON.parse(localStorage.getItem('tokens')));
+      setBmi(response.data.bmi);
       setProfileSuccess('Profile updated successfully.');
     } catch (err) {
       setProfileError(err.response?.data?.detail || 'Failed to update profile.');
@@ -61,7 +74,8 @@ function Profile() {
     setPasswordLoading(true);
     try {
       await api.put('/profile/update/password/', passwordData);
-      setPasswordSuccess('Password updated. Please log in again.');
+      setPasswordSuccess('Password updated. Redirecting to login...');
+      setPasswordData({ current_password: '', new_password: '' });
       setTimeout(() => {
         logout();
         navigate('/login');
@@ -92,13 +106,13 @@ function Profile() {
   return (
     <div className='cu-auth-page' style={{ alignItems: 'flex-start', paddingTop: '2.5rem' }}>
       <div style={{ width: '100%', maxWidth: '680px' }}>
-        {/* Profile Info */}
+        {/* Personal Info */}
         <Card className='cu-auth-card p-4 mb-4'>
           <Card.Body>
             <h5 className='cu-auth-title mb-1' style={{ fontSize: '1.3rem' }}>
               Personal Information
             </h5>
-            <p className='cu-auth-subtitle mb-3'>Update your name and email</p>
+            <p className='cu-auth-subtitle mb-3'>Update your name, email and physical info</p>
 
             {profileError && (
               <Alert variant='danger' className='py-2' style={{ fontSize: '0.88rem' }}>
@@ -138,7 +152,8 @@ function Profile() {
                   </Form.Group>
                 </Col>
               </Row>
-              <Form.Group className='mb-4'>
+
+              <Form.Group className='mb-3'>
                 <Form.Label className='cu-form-label'>Email</Form.Label>
                 <Form.Control
                   type='email'
@@ -148,6 +163,71 @@ function Profile() {
                   onChange={handleProfileChange}
                 />
               </Form.Group>
+
+              <Form.Group className='mb-3'>
+                <Form.Label className='cu-form-label'>Gender</Form.Label>
+                <Form.Select
+                  name='gender'
+                  className='cu-form-input'
+                  value={profileData.gender}
+                  onChange={handleProfileChange}
+                >
+                  <option value='MALE'>Male</option>
+                  <option value='FEMALE'>Female</option>
+                </Form.Select>
+              </Form.Group>
+
+              <Row>
+                <Col>
+                  <Form.Group className='mb-3'>
+                    <Form.Label className='cu-form-label'>Age</Form.Label>
+                    <Form.Control
+                      type='number'
+                      name='age'
+                      className='cu-form-input'
+                      min={1}
+                      max={120}
+                      value={profileData.age}
+                      onChange={handleProfileChange}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col>
+                  <Form.Group className='mb-3'>
+                    <Form.Label className='cu-form-label'>Height (cm)</Form.Label>
+                    <Form.Control
+                      type='number'
+                      name='height'
+                      className='cu-form-input'
+                      min={1}
+                      step={0.1}
+                      value={profileData.height}
+                      onChange={handleProfileChange}
+                    />
+                  </Form.Group>
+                </Col>
+                <Col>
+                  <Form.Group className='mb-3'>
+                    <Form.Label className='cu-form-label'>Weight (kg)</Form.Label>
+                    <Form.Control
+                      type='number'
+                      name='weight'
+                      className='cu-form-input'
+                      min={1}
+                      step={0.1}
+                      value={profileData.weight}
+                      onChange={handleProfileChange}
+                    />
+                  </Form.Group>
+                </Col>
+              </Row>
+
+              {bmi && (
+                <p style={{ fontSize: '0.88rem', color: '#555', marginBottom: '1rem' }}>
+                  Calculated BMI: <strong style={{ color: getBmiColor(bmi) }}>{bmi}</strong>
+                </p>
+              )}
+
               <Button type='submit' className='cu-btn-submit' disabled={profileLoading}>
                 {profileLoading ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -155,7 +235,7 @@ function Profile() {
           </Card.Body>
         </Card>
 
-        {/* Update Password */}
+        {/* Change Password */}
         <Card className='cu-auth-card p-4 mb-4'>
           <Card.Body>
             <h5 className='cu-auth-title mb-1' style={{ fontSize: '1.3rem' }}>
@@ -236,6 +316,7 @@ function Profile() {
           </Card.Body>
         </Card>
       </div>
+      <img src={concordiaLogo} alt='Concordia University' className='concordia-logo' />
     </div>
   );
 }

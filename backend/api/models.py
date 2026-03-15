@@ -7,9 +7,17 @@ class CustomUser(AbstractUser):
         COACH = "COACH", "Coach"
         ADMIN = "ADMIN", "Admin"
 
+    class Gender(models.TextChoices):
+        MALE = 'MALE', 'Male'
+        FEMALE = 'FEMALE', 'Female'
+
     role = models.CharField(max_length=20, choices=Role.choices, default=Role.STUDENT)
     concordia_id = models.CharField(max_length=10, unique=True)
     is_approved = models.BooleanField(default=False)
+    gender = models.CharField(max_length=20, choices=Gender.choices, blank=True, null=True)
+    age = models.PositiveIntegerField(blank=True, null=True)
+    height = models.FloatField(blank=True, null=True)  
+    weight = models.FloatField(blank=True, null=True)
     
     def __str__(self) -> str:
         return f"{self.username} ({self.role})"
