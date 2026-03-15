@@ -40,6 +40,10 @@ def login(request):
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
+    height = float(user.height) if user.height else None
+    weight = float(user.weight) if user.weight else None
+    bmi = round(weight / ((height / 100) ** 2), 1) if height and weight else None
+
     return Response(
         {
             "user": {
@@ -49,6 +53,11 @@ def login(request):
                 "email": user.email,
                 "role": user.role,
                 "is_approved": user.is_approved,
+                "gender": user.gender,
+                "age": user.age,
+                "height": user.height,
+                "weight": user.weight,
+                "bmi": bmi,
             },
             "tokens": _jwt_for_user(user),
         },

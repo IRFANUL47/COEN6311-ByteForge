@@ -21,12 +21,25 @@ def update_profile(request):
     user.first_name = data.get("first_name", user.first_name) or user.first_name
     user.last_name = data.get("last_name", user.last_name) or user.last_name
     user.email = new_email or user.email
+    user.gender = data.get("gender", user.gender) or user.gender
+    user.height = float(data.get("height", user.height)) if data.get("height") else user.height
+    user.weight = float(data.get("weight", user.weight)) if data.get("weight") else user.weight
+    user.age = int(data.get("age", user.age)) if data.get("age") else user.age
     user.save()
+    
+    height = user.height
+    weight = user.weight
+    bmi = round(weight / ((height / 100) ** 2), 1) if height and weight else None
 
     return Response({
         "first_name": user.first_name,
         "last_name": user.last_name,
         "email": user.email,
+        "gender": user.gender,
+        "age": user.age,
+        "height": user.height,
+        "weight": user.weight,
+        "bmi": bmi,
     }, status=status.HTTP_200_OK)
 
 @api_view(["PUT"])
