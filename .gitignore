@@ -2,9 +2,3 @@
 .vscode/*
 !.vscode/settings.json
 !.vscode/extensions.json
-
-venv-cufitness/
-.venv/
-
-__pycache__/
-*.py[cod]
