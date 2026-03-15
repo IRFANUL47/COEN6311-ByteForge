@@ -1,12 +1,10 @@
-from django.shortcuts import render
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-
-from .serializers import LoginSerializer, RegisterSerializer
+from ..serializers import LoginSerializer, RegisterSerializer
 
 User = get_user_model()
 
@@ -23,18 +21,7 @@ def register(request):
     serializer.is_valid(raise_exception=True)
     user = serializer.save()
 
-    return Response(
-        {
-            "user": {
-                "id": user.id,
-                "name": user.first_name,
-                "email": user.email,
-                "role": user.profile.role,
-            },
-            "tokens": _jwt_for_user(user),
-        },
-        status=status.HTTP_201_CREATED,
-    )
+    return Response(status=status.HTTP_201_CREATED,)
 
 
 @api_view(["POST"])
@@ -43,13 +30,13 @@ def login(request):
     serializer = LoginSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    email = serializer.validated_data["email"].lower().strip()
+    concordia_id = serializer.validated_data["concordia_id"]
     password = serializer.validated_data["password"]
 
-    user = authenticate(request, username=email, password=password)
+    user = authenticate(request, username=concordia_id, password=password)
     if user is None:
         return Response(
-            {"detail": "Invalid email or password."},
+            {"detail": "Invalid credentials."},
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
@@ -57,9 +44,11 @@ def login(request):
         {
             "user": {
                 "id": user.id,
-                "name": user.first_name,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
                 "email": user.email,
-                "role": getattr(user.profile, "role", None),
+                "role": user.role,
+                "is_approved": user.is_approved,
             },
             "tokens": _jwt_for_user(user),
         },

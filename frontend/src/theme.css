@@ -1,0 +1,182 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+  --bs-primary: #912338;
+  --bs-primary-rgb: 145, 35, 56;
+  --cu-burgundy: #912338;
+  --cu-burgundy-hover: #7b1e30;
+  --cu-gold: #c9a859;
+  --cu-font-brand: 'Cormorant Garamond', serif;
+  --cu-font-body: 'DM Sans', sans-serif;
+}
+
+body {
+  font-family: var(--cu-font-body);
+  background-color: #f4f1f1;
+}
+
+/* Navbar */
+.cu-navbar {
+  background: #ffffff;
+  border-bottom: 1px solid #ede8e8;
+  padding: 0 2rem;
+  height: 64px;
+}
+
+.cu-brand {
+  font-family: var(--cu-font-brand);
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: var(--cu-burgundy) !important;
+  letter-spacing: 1.5px;
+  border-left: 3px solid var(--cu-gold);
+  padding-left: 0.7rem;
+  text-decoration: none;
+}
+
+.cu-brand:hover {
+  color: var(--cu-burgundy-hover) !important;
+}
+
+.cu-nav-link {
+  color: #555 !important;
+  font-size: 0.9rem;
+  font-weight: 400;
+  position: relative;
+  text-decoration: none;
+  padding: 0.4rem 0.75rem !important;
+  transition: color 0.2s ease;
+}
+
+.cu-nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background: var(--cu-gold);
+  transition: width 0.25s ease;
+  border-radius: 2px;
+}
+
+.cu-nav-link:hover,
+.cu-nav-link.active {
+  color: var(--cu-burgundy) !important;
+}
+
+.cu-nav-link:hover::after,
+.cu-nav-link.active::after {
+  width: 60%;
+}
+
+.cu-btn-login {
+  background: var(--cu-burgundy) !important;
+  border-color: var(--cu-burgundy) !important;
+  font-size: 0.88rem;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  padding: 0.4rem 1.2rem !important;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease !important;
+}
+
+.cu-btn-login:hover {
+  background: var(--cu-burgundy-hover) !important;
+  border-color: var(--cu-burgundy-hover) !important;
+  transform: translateY(-1px);
+}
+
+/* Auth pages */
+.cu-auth-page {
+  min-height: calc(100vh - 64px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  position: relative;
+  background-color: #f4f1f1;
+}
+
+.cu-auth-card {
+  border: 1.5px solid #e4dcdc !important;
+  border-radius: 12px !important;
+  box-shadow: 0 4px 24px rgba(145, 35, 56, 0.08) !important;
+  animation: fadeUp 0.35s ease forwards;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cu-auth-title {
+  font-family: var(--cu-font-brand);
+  font-size: 1.85rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  letter-spacing: 0.5px;
+}
+
+.cu-auth-subtitle {
+  color: #888;
+  font-size: 0.9rem;
+  font-weight: 300;
+}
+
+.cu-form-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: #555;
+}
+
+.cu-form-input:focus {
+  border-color: var(--cu-burgundy) !important;
+  box-shadow: 0 0 0 3px rgba(145, 35, 56, 0.1) !important;
+}
+
+.cu-btn-submit {
+  background: var(--cu-burgundy) !important;
+  border-color: var(--cu-burgundy) !important;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  padding: 0.65rem !important;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease !important;
+}
+
+.cu-btn-submit:hover {
+  background: var(--cu-burgundy-hover) !important;
+  border-color: var(--cu-burgundy-hover) !important;
+  transform: translateY(-1px);
+}
+
+.cu-auth-switch a {
+  color: var(--cu-burgundy);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.cu-auth-switch a:hover {
+  color: var(--cu-burgundy-hover);
+  text-decoration: underline;
+}
+
+.concordia-logo {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 2rem;
+  width: 100px;
+  opacity: 0.6;
+}
