@@ -60,17 +60,17 @@ class DietaryRestriction(models.Model):
 
 class UserDietaryRestriction(models.Model):
     #Through model to associate users with dietary restrictions, allowing for additional metadata if needed in the future.
-    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="user_dietary_restrictions")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_dietary_restrictions")
     dietary_restriction = models.ForeignKey(DietaryRestriction, on_delete=models.CASCADE, related_name="user_links")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('profile', 'dietary_restriction')
-        indexes = [models.Index(fields=['profile', 'dietary_restriction'])]
+        unique_together = ('user', 'dietary_restriction')
+        indexes = [models.Index(fields=['user', 'dietary_restriction'])]
         ordering = ['-created_at']
 
     def __str__(self) -> str:
-        return f"{self.profile.user.username} - {self.dietary_restriction.display_name}"
+        return f"{self.user.username} - {self.dietary_restriction.display_name}"
 
 
 class NutritionPlan(models.Model):

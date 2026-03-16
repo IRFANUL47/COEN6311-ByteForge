@@ -72,50 +72,20 @@ class UserDietaryRestrictionSerializer(serializers.ModelSerializer):
         fields = ["dietary_restriction", "restriction_key", "created_at"]
 
     def create(self, validated_data):
-
-        profile = self.context.get("profile")
+        request = self.context.get("request")
+        user = self.context.get("user") or (request.user if request is not None else None)
         restriction_key = validated_data.get("restriction_key")
 
-        if not restriction_key or profile is None:
-            raise serializers.ValidationError("Both 'restriction_key' and 'profile' context are required.")
+        if user is None or not restriction_key:
+            raise serializers.ValidationError("Both 'restriction_key' and authenticated 'user' are required.")
 
         try:
             restriction = DietaryRestriction.objects.get(key=restriction_key)
         except DietaryRestriction.DoesNotExist:
             raise serializers.ValidationError({"restriction_key": "Invalid dietary restriction key."})
 
-        rel, created = UserDietaryRestriction.objects.get_or_create(profile=profile, dietary_restriction=restriction)
+        rel, created = UserDietaryRestriction.objects.get_or_create(user=user, dietary_restriction=restriction)
         return rel
-
-
-class ProfileSerializer(serializers.ModelSerializer):
-    user = serializers.SerializerMethodField(read_only=True)
-    user_dietary_restrictions = UserDietaryRestrictionSerializer(many=True, read_only=True)
-    dietary_restrictions_keys = serializers.ListField(child=serializers.CharField(), write_only=True, required=False,
-    help_text="List of restriction keys to replace the current set")
-
-    class Meta:
-        model = Profile
-        fields = ("user", "role", "user_dietary_restrictions", "dietary_restrictions_keys")
-        read_only_fields = ("user", "user_dietary_restrictions")
-    
-    def get_user(self, obj):
-        return {"id": obj.user.id, "email": obj.user.email, "name": obj.user.first_name}
-    
-    def update(self, instance, validated_data):
-        keys = validated_data.pop("dietary_restrictions_keys", None)
-        instance = super().update(instance, validated_data)
-        if keys is not None:
-            allowed = list(DietaryRestriction.objects.filter(key__in=keys))
-            found_keys = {r.key for r in allowed}
-            missing_keys = set(keys) - found_keys
-            if missing_keys:
-                raise serializers.ValidationError({"dietary_restrictions_keys": f"Invalid keys: {', '.join(missing_keys)}"})
-
-            instance.user_dietary_restrictions.all().delete()
-            for restriction in allowed:
-                UserDietaryRestriction.objects.create(profile=instance, dietary_restriction=restriction)
-        return instance
 
 
 class NutritionPlanSerializer(serializers.ModelSerializer):
@@ -163,7 +133,7 @@ class NutritionPlanSerializer(serializers.ModelSerializer):
 
 
 class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
-    
+
     student = serializers.PrimaryKeyRelatedField(queryset=UserModel.objects.none())
 
     class Meta:
