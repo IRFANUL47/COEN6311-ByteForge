@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from .models import CustomUser, Profile, DietaryRestriction, UserDietaryRestriction
+from .models import CustomUser, DietaryRestriction, UserDietaryRestriction, NutritionPlan
 
 User = get_user_model()
 
@@ -116,3 +116,109 @@ class ProfileSerializer(serializers.ModelSerializer):
             for restriction in allowed:
                 UserDietaryRestriction.objects.create(profile=instance, dietary_restriction=restriction)
         return instance
+
+
+class NutritionPlanSerializer(serializers.ModelSerializer):
+    coach = serializers.SerializerMethodField(read_only=True)
+    student = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = NutritionPlan
+        fields = (
+            "id",
+            "title",
+            "notes",
+            "plan",
+            "calories_target",
+            "protein_g",
+            "carbs_g",
+            "fats_g",
+            "start_date",
+            "end_date",
+            "is_active",
+            "coach",
+            "student",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("coach", "created_at", "updated_at")
+
+    def get_coach(self, obj):
+        if obj.coach is None:
+            return None
+        return {
+            "id": obj.coach.id,
+            "name": f"{obj.coach.first_name} {obj.coach.last_name}".strip(),
+            "concordia_id": getattr(obj.coach, "concordia_id", None),
+        }
+
+    def get_student(self, obj):
+        if obj.student is None:
+            return None
+        return {
+            "id": obj.student.id,
+            "name": f"{obj.student.first_name} {obj.student.last_name}".strip(),
+            "concordia_id": getattr(obj.student, "concordia_id", None),
+        }
+
+
+class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
+    
+    student = serializers.PrimaryKeyRelatedField(queryset=UserModel.objects.none())
+
+    class Meta:
+        model = NutritionPlan
+        fields = (
+            "id",
+            "title",
+            "notes",
+            "plan",
+            "calories_target",
+            "protein_g",
+            "carbs_g",
+            "fats_g",
+            "start_date",
+            "end_date",
+            "is_active",
+            "student",
+        )
+        read_only_fields = ("id",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # populate queryset now (models are ready)
+        try:
+            self.fields["student"].queryset = UserModel.objects.filter(role=UserModel.Role.STUDENT)
+        except Exception:
+            # fallback to all users if filter fails for any reason
+            self.fields["student"].queryset = UserModel.objects.all()
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        if request is None:
+            return attrs
+
+        user = request.user
+        # Only coaches or superusers can create/update plans
+        if not (getattr(user, "is_superuser", False) or getattr(user, "role", None) == UserModel.Role.COACH):
+            raise serializers.ValidationError("Only coaches or admins may create or update nutrition plans.")
+
+        student = attrs.get("student")
+        if student and getattr(student, "role", None) != UserModel.Role.STUDENT:
+            raise serializers.ValidationError({"student": "The selected user is not a student."})
+
+        start = attrs.get("start_date")
+        end = attrs.get("end_date")
+        if start and end and end < start:
+            raise serializers.ValidationError({"end_date": "end_date must be the same or after start_date."})
+
+        return attrs
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        coach = request.user if request else None
+        instance = NutritionPlan.objects.create(coach=coach, **validated_data)
+        return instance
+
+    def update(self, instance, validated_data):
+        return super().update(instance, validated_data)
