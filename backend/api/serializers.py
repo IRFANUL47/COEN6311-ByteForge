@@ -134,7 +134,7 @@ class NutritionPlanSerializer(serializers.ModelSerializer):
 
 class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
 
-    student = serializers.PrimaryKeyRelatedField(queryset=UserModel.objects.none())
+    student = serializers.PrimaryKeyRelatedField(queryset=User.objects.none())
 
     class Meta:
         model = NutritionPlan
@@ -158,10 +158,10 @@ class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
         super().__init__(*args, **kwargs)
         # populate queryset now (models are ready)
         try:
-            self.fields["student"].queryset = UserModel.objects.filter(role=UserModel.Role.STUDENT)
+            self.fields["student"].queryset = User.objects.filter(role=User.Role.STUDENT)
         except Exception:
             # fallback to all users if filter fails for any reason
-            self.fields["student"].queryset = UserModel.objects.all()
+            self.fields["student"].queryset = User.objects.all()
 
     def validate(self, attrs):
         request = self.context.get("request")
@@ -170,11 +170,11 @@ class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
 
         user = request.user
         # Only coaches or superusers can create/update plans
-        if not (getattr(user, "is_superuser", False) or getattr(user, "role", None) == UserModel.Role.COACH):
+        if not (getattr(user, "is_superuser", False) or getattr(user, "role", None) == User.Role.COACH):
             raise serializers.ValidationError("Only coaches or admins may create or update nutrition plans.")
 
         student = attrs.get("student")
-        if student and getattr(student, "role", None) != UserModel.Role.STUDENT:
+        if student and getattr(student, "role", None) != User.Role.STUDENT:
             raise serializers.ValidationError({"student": "The selected user is not a student."})
 
         start = attrs.get("start_date")
