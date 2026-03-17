@@ -12,7 +12,7 @@ from ..serializers import NutritionPlanSerializer, NutritionPlanCreateUpdateSeri
 @permission_classes([IsAuthenticated])
 def nutritionplan_list(request):
     user = request.user
-    if getattr(user, "is_superuser", False):
+    if getattr(user, "role", None) == user.Role.ADMIN:
         qs = NutritionPlan.objects.all().order_by("-created_at")
     elif getattr(user, "role", None) == user.Role.COACH:
         qs = NutritionPlan.objects.filter(coach=user).order_by("-created_at")
@@ -29,7 +29,7 @@ def nutritionplan_list(request):
 @permission_classes([IsAuthenticated])
 def nutritionplan_create(request):
     user = request.user
-    if not (getattr(user, "is_superuser", False) or getattr(user, "role", None) == user.Role.COACH):
+    if not (getattr(user, "role", None) == user.Role.ADMIN or getattr(user, "role", None) == user.Role.COACH):
         return Response({"detail": "Only coaches or admins may create nutrition plans."}, status=status.HTTP_403_FORBIDDEN)
 
     serializer = NutritionPlanCreateUpdateSerializer(data=request.data, context={"request": request})
@@ -46,7 +46,7 @@ def nutritionplan_detail(request, pk):
     plan = get_object_or_404(NutritionPlan, pk=pk)
     user = request.user
 
-    if not (getattr(user, "is_superuser", False)
+    if not (getattr(user, "role", None) == user.Role.ADMIN
             or (getattr(user, "role", None) == user.Role.COACH and plan.coach_id == user.pk)
             or (getattr(user, "role", None) == user.Role.STUDENT and plan.student_id == user.pk)):
         return Response({"detail": "Not authorized to view this nutrition plan."}, status=status.HTTP_403_FORBIDDEN)
@@ -79,7 +79,7 @@ def nutritionplan_delete(request, pk):
     plan = get_object_or_404(NutritionPlan, pk=pk)
     user = request.user
 
-    if not (getattr(user, "is_superuser", False) or (getattr(user, "role", None) == user.Role.COACH and plan.coach_id == user.pk)):
+    if not (getattr(user, "role", None) == user.Role.ADMIN or (getattr(user, "role", None) == user.Role.COACH and plan.coach_id == user.pk)):
         return Response({"detail": "Only the coach who created the plan or an admin can delete it."}, status=status.HTTP_403_FORBIDDEN)
 
     plan.delete()
