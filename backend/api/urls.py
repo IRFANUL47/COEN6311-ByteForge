@@ -19,4 +19,8 @@ urlpatterns = [
     path("nutrition-plans/<int:pk>/", views.nutritionplan_detail, name="nutritionplan-detail"),
     path("nutrition-plans/<int:pk>/update/", views.nutritionplan_update, name="nutritionplan-update"),
     path("nutrition-plans/<int:pk>/delete/", views.nutritionplan_delete, name="nutritionplan-delete"),
+
+    path("dietary-restrictions/", views.my_dietary_restrictions, name="my_dietary_restrictions"),
+    path("dietary-restrictions/add/", views.add_dietary_restriction, name="add_dietary_restriction"),
+    path("dietary-restrictions/remove/", views.remove_dietary_restriction, name="remove_dietary_restriction"),
 ]
