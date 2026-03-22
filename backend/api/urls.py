@@ -23,4 +23,6 @@ urlpatterns = [
     path("dietary-restrictions/", views.my_dietary_restrictions, name="my_dietary_restrictions"),
     path("dietary-restrictions/add/", views.add_dietary_restriction, name="add_dietary_restriction"),
     path("dietary-restrictions/remove/", views.remove_dietary_restriction, name="remove_dietary_restriction"),
+    path("dietary-restrictions/all/", views.all_dietary_restrictions, name="all_dietary_restrictions"),
+    path("dietary-restrictions/<str:concordia_id>/", views.dietary_restrictions_by_concordia_id, name="dietary_restrictions_by_concordia_id"),
 ]

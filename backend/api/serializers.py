@@ -169,8 +169,8 @@ class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
             return attrs
 
         user = request.user
-        # Only coaches or superusers can create/update plans
-        if not (getattr(user, "is_superuser", False) or getattr(user, "role", None) == User.Role.COACH):
+        # Only coaches can create/update plans
+        if not (getattr(user, "role", None) == User.Role.COACH):
             raise serializers.ValidationError("Only coaches or admins may create or update nutrition plans.")
 
         student = attrs.get("student")
