@@ -1,5 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.conf import settings
+from django.core.exceptions import ValidationError
 
 class CustomUser(AbstractUser):
     class Role(models.TextChoices):
@@ -18,10 +20,12 @@ class CustomUser(AbstractUser):
     age = models.PositiveIntegerField(blank=True, null=True)
     height = models.FloatField(blank=True, null=True)  
     weight = models.FloatField(blank=True, null=True)
+    dietary_restrictions = models.ManyToManyField("DietaryRestriction", through="UserDietaryRestriction", blank=True)
     
     def __str__(self) -> str:
         return f"{self.username} ({self.role})"
-    
+
+
 class Equipment(models.Model):
     class Category(models.TextChoices):
         CARDIO = 'CARDIO', 'Cardio'
@@ -36,3 +40,96 @@ class Equipment(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.category})"
+
+
+class DietaryRestriction(models.Model):
+    #Canonical List of dietary restrictions, e.g. "vegan", "gluten-free", etc.
+    #The admin can manage restriction types without code changes.
+    display_name = models.CharField(max_length=100, unique=True, help_text="The name of the dietary restriction as it appears to users.")
+    key = models.CharField(max_length=100, unique=True , help_text= "A unique identifier for the dietary restriction, used internally. Should be lowercase and contain no spaces (e.g. 'vegan', 'gluten_free').")
+    description = models.TextField(blank=True, default="")
+    
+    class Meta:
+        ordering = ['display_name']
+        verbose_name = "Dietary Restriction"
+        verbose_name_plural = "Dietary Restrictions"
+
+    def __str__(self) -> str:
+        return self.display_name
+
+
+class UserDietaryRestriction(models.Model):
+    #Through model to associate users with dietary restrictions, allowing for additional metadata if needed in the future.
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="user_dietary_restrictions")
+    dietary_restriction = models.ForeignKey(DietaryRestriction, on_delete=models.CASCADE, related_name="user_links")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'dietary_restriction')
+        indexes = [models.Index(fields=['user', 'dietary_restriction'])]
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f"{self.user.username} - {self.dietary_restriction.display_name}"
+
+
+class NutritionPlan(models.Model):
+
+    coach = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="nutrition_plans_given", help_text="Coach who created the plan",)
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="nutrition_plans_received", help_text="Student who receives the plan",)
+
+    title = models.CharField(max_length=200, blank=True)
+    notes = models.TextField(blank=True, help_text="Free-form instructions for the student.")
+    plan = models.JSONField(blank=True, null=True, help_text="Optional structured plan (meals, schedule, portions).")
+
+    calories_target = models.PositiveIntegerField(null=True, blank=True)
+    protein_g = models.PositiveIntegerField(null=True, blank=True)
+    carbs_g = models.PositiveIntegerField(null=True, blank=True)
+    fats_g = models.PositiveIntegerField(null=True, blank=True)
+
+    start_date = models.DateField(null=True, blank=True)
+    end_date = models.DateField(null=True, blank=True)
+
+    is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Nutrition Plan"
+        verbose_name_plural = "Nutrition Plans"
+        indexes = [models.Index(fields=["coach"]), models.Index(fields=["student"]), models.Index(fields=["is_active", "start_date"]),]
+
+    def __str__(self) -> str:
+        title = f" - {self.title}" if self.title else ""
+        return f"NutritionPlan: {self.student} by {self.coach}{title}"
+
+    def clean(self):
+        # ensure coach and student are different
+        if self.coach_id and self.student_id and self.coach_id == self.student_id:
+            raise ValidationError("Coach and student must be different users.")
+
+        # If user objects are available, validate roles
+        coach_role = getattr(self.coach, "role", None)
+        student_role = getattr(self.student, "role", None)
+
+        if coach_role is not None and coach_role != CustomUser.Role.COACH:
+            raise ValidationError({"coach": "Assigned coach must have role COACH."})
+        if student_role is not None and student_role != CustomUser.Role.STUDENT:
+            raise ValidationError({"student": "Assigned student must have role STUDENT."})
+
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError({"end_date": "end_date must be the same or after start_date."})
+
+    def save(self, *args, **kwargs):
+        # run validation before saving
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def is_editable_by(self, user):
+        if user is None:
+            return False
+        if getattr(user, "is_superuser", False):
+            return True
+        return user.pk == self.coach_id
