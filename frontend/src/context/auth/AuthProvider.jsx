@@ -12,6 +12,11 @@ export function AuthProvider({ children }) {
     return saved ? JSON.parse(saved) : null;
   });
 
+  const [dietaryRestrictions, setDietaryRestrictions] = useState(() => {
+    const saved = localStorage.getItem('dietary_restrictions');
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const login = (userData, tokenData) => {
     setUser(userData);
     setTokens(tokenData);
@@ -24,7 +29,16 @@ export function AuthProvider({ children }) {
     setTokens(null);
     localStorage.removeItem('user');
     localStorage.removeItem('tokens');
+    localStorage.removeItem('dietary_restrictions');
   };
 
-  return <AuthContext.Provider value={{ user, tokens, login, logout }}>{children}</AuthContext.Provider>;
+  const updateDietaryRestrictions = (restrictions) => {
+    setDietaryRestrictions(restrictions);
+    localStorage.setItem('dietary_restrictions', JSON.stringify(restrictions));
+  };
+  return (
+    <AuthContext.Provider value={{ user, tokens, login, logout, dietaryRestrictions, updateDietaryRestrictions }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }

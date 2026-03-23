@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Equipment from './pages/Equipment';
+import Dashboard from './pages/Dashboard';
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -24,7 +25,7 @@ function App() {
           path='/dashboard'
           element={
             <ProtectedRoute>
-              <div>Dashboard</div>
+              <Dashboard />
             </ProtectedRoute>
           }
         />

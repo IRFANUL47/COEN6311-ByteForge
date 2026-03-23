@@ -18,29 +18,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='DietaryRestriction',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('display_name', models.CharField(help_text='The name of the dietary restriction as it appears to users.', max_length=100, unique=True)),
-                ('key', models.CharField(help_text="A unique identifier for the dietary restriction, used internally. Should be lowercase and contain no spaces (e.g. 'vegan', 'gluten_free').", max_length=100, unique=True)),
-                ('description', models.TextField(blank=True, default='')),
-            ],
-            options={
-                'verbose_name': 'Dietary Restriction',
-                'verbose_name_plural': 'Dietary Restrictions',
-                'ordering': ['display_name'],
-            },
-        ),
-        migrations.CreateModel(
-            name='Equipment',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100)),
-                ('category', models.CharField(choices=[('CARDIO', 'Cardio'), ('HEAVY', 'Power Lifting'), ('CABLES', 'Cable Towers'), ('MACHINES', 'Resistance Machines'), ('RAW', 'Raw Equipment')], default='RAW', max_length=20)),
-                ('quantity', models.PositiveIntegerField(default=0)),
-            ],
-        ),
-        migrations.CreateModel(
             name='CustomUser',
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
@@ -68,42 +45,5 @@ class Migration(migrations.Migration):
             managers=[
                 ('objects', django.contrib.auth.models.UserManager()),
             ],
-        ),
-        migrations.CreateModel(
-            name='Profile',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('role', models.CharField(choices=[('STUDENT', 'Student'), ('COACH', 'Coach'), ('ADMIN', 'Admin')], default='STUDENT', max_length=20)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='profile', to=settings.AUTH_USER_MODEL)),
-            ],
-            options={
-                'verbose_name': 'Profile',
-                'verbose_name_plural': 'Profiles',
-            },
-        ),
-        migrations.CreateModel(
-            name='UserDietaryRestriction',
-            fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('dietary_restriction', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='user_links', to='api.dietaryrestriction')),
-                ('profile', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='user_dietary_restrictions', to='api.profile')),
-            ],
-            options={
-                'ordering': ['-created_at'],
-            },
-        ),
-        migrations.AddField(
-            model_name='profile',
-            name='dieterary_restrictions',
-            field=models.ManyToManyField(blank=True, related_name='profiles', through='api.UserDietaryRestriction', to='api.dietaryrestriction'),
-        ),
-        migrations.AddIndex(
-            model_name='userdietaryrestriction',
-            index=models.Index(fields=['profile', 'dietary_restriction'], name='api_userdie_profile_246666_idx'),
-        ),
-        migrations.AlterUniqueTogether(
-            name='userdietaryrestriction',
-            unique_together={('profile', 'dietary_restriction')},
         ),
     ]

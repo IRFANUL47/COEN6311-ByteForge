@@ -1,13 +1,28 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, Form, Button, Alert, Row, Col } from 'react-bootstrap';
 import api from '../api/axios';
 import { useAuth } from '../context/auth/useAuth';
 import concordiaLogo from '../assets/concordia-logo.png';
 
+const getBmiColor = (bmi) => {
+  if (bmi < 18.5) return '#e5a712';
+  if (bmi < 25) return '#508212';
+  if (bmi < 30) return '#e5a712';
+  return '#912338';
+};
+
+const getBmiLabel = (bmi) => {
+  if (bmi < 18.5) return 'Underweight';
+  if (bmi < 25) return 'Normal';
+  if (bmi < 30) return 'Overweight';
+  return 'Obese';
+};
+
 function Profile() {
-  const { user, login, logout } = useAuth();
+  const { user, login, logout, updateDietaryRestrictions } = useAuth();
   const navigate = useNavigate();
+  const isStudent = user?.role === 'STUDENT';
 
   const [profileData, setProfileData] = useState({
     first_name: user?.first_name || '',
@@ -23,10 +38,7 @@ function Profile() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [bmi, setBmi] = useState(user?.bmi || null);
 
-  const [passwordData, setPasswordData] = useState({
-    current_password: '',
-    new_password: '',
-  });
+  const [passwordData, setPasswordData] = useState({ current_password: '', new_password: '' });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -35,20 +47,50 @@ function Profile() {
   const [deleteError, setDeleteError] = useState('');
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const getBmiColor = (bmi) => {
-    if (bmi < 18.5) return '#e5a712'; // underweight - orange
-    if (bmi < 25) return '#508212'; // normal - green
-    if (bmi < 30) return '#e5a712'; // overweight - orange
-    return '#912338'; // obese - red
+  const [allRestrictions, setAllRestrictions] = useState([]);
+  const [myRestrictions, setMyRestrictions] = useState([]);
+  const [restrictionError, setRestrictionError] = useState('');
+
+  useEffect(() => {
+    if (isStudent) fetchRestrictions();
+  }, [isStudent]);
+
+  const fetchRestrictions = async () => {
+    try {
+      const [allRes, myRes] = await Promise.all([
+        api.get('/dietary-restrictions/all/'),
+        api.get('/dietary-restrictions/'),
+      ]);
+      setAllRestrictions(allRes.data);
+      const myKeys = myRes.data.map((r) => r.dietary_restriction.key);
+      setMyRestrictions(myKeys);
+      updateDietaryRestrictions(myRes.data.map((r) => r.dietary_restriction));
+    } catch {
+      setRestrictionError('Failed to load dietary restrictions.');
+    }
   };
 
-  const handleProfileChange = (e) => {
-    setProfileData({ ...profileData, [e.target.name]: e.target.value });
+  const handleRestrictionToggle = async (key) => {
+    const hasIt = myRestrictions.includes(key);
+    try {
+      if (hasIt) {
+        await api.delete('/dietary-restrictions/remove/', { data: { restriction_key: key } });
+        const updated = myRestrictions.filter((k) => k !== key);
+        setMyRestrictions(updated);
+        updateDietaryRestrictions(allRestrictions.filter((r) => updated.includes(r.key)));
+      } else {
+        await api.post('/dietary-restrictions/add/', { restriction_key: key });
+        const updated = [...myRestrictions, key];
+        setMyRestrictions(updated);
+        updateDietaryRestrictions(allRestrictions.filter((r) => updated.includes(r.key)));
+      }
+    } catch {
+      setRestrictionError('Failed to update restriction.');
+    }
   };
 
-  const handlePasswordChange = (e) => {
-    setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
-  };
+  const handleProfileChange = (e) => setProfileData({ ...profileData, [e.target.name]: e.target.value });
+  const handlePasswordChange = (e) => setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
@@ -113,7 +155,6 @@ function Profile() {
               Personal Information
             </h5>
             <p className='cu-auth-subtitle mb-3'>Update your name, email and physical info</p>
-
             {profileError && (
               <Alert variant='danger' className='py-2' style={{ fontSize: '0.88rem' }}>
                 {profileError}
@@ -124,7 +165,6 @@ function Profile() {
                 {profileSuccess}
               </Alert>
             )}
-
             <Form onSubmit={handleProfileSubmit}>
               <Row>
                 <Col>
@@ -152,7 +192,6 @@ function Profile() {
                   </Form.Group>
                 </Col>
               </Row>
-
               <Form.Group className='mb-3'>
                 <Form.Label className='cu-form-label'>Email</Form.Label>
                 <Form.Control
@@ -163,7 +202,6 @@ function Profile() {
                   onChange={handleProfileChange}
                 />
               </Form.Group>
-
               <Form.Group className='mb-3'>
                 <Form.Label className='cu-form-label'>Gender</Form.Label>
                 <Form.Select
@@ -172,11 +210,11 @@ function Profile() {
                   value={profileData.gender}
                   onChange={handleProfileChange}
                 >
+                  {!profileData.gender && <option value=''>Select gender</option>}
                   <option value='MALE'>Male</option>
                   <option value='FEMALE'>Female</option>
                 </Form.Select>
               </Form.Group>
-
               <Row>
                 <Col>
                   <Form.Group className='mb-3'>
@@ -221,19 +259,54 @@ function Profile() {
                   </Form.Group>
                 </Col>
               </Row>
-
               {bmi && (
                 <p style={{ fontSize: '0.88rem', color: '#555', marginBottom: '1rem' }}>
-                  Calculated BMI: <strong style={{ color: getBmiColor(bmi) }}>{bmi}</strong>
+                  BMI:{' '}
+                  <strong style={{ color: getBmiColor(bmi) }}>
+                    {bmi} — {getBmiLabel(bmi)}
+                  </strong>
                 </p>
               )}
-
               <Button type='submit' className='cu-btn-submit' disabled={profileLoading}>
                 {profileLoading ? 'Saving...' : 'Save Changes'}
               </Button>
             </Form>
           </Card.Body>
         </Card>
+
+        {/* Dietary Restrictions - students only */}
+        {isStudent && (
+          <Card className='cu-auth-card p-4 mb-4'>
+            <Card.Body>
+              <h5 className='cu-auth-title mb-1' style={{ fontSize: '1.3rem' }}>
+                Dietary Restrictions
+              </h5>
+              <p className='cu-auth-subtitle mb-3'>Select all that apply to you</p>
+              {restrictionError && (
+                <Alert variant='danger' className='py-2' style={{ fontSize: '0.88rem' }}>
+                  {restrictionError}
+                </Alert>
+              )}
+              {allRestrictions.length === 0 ? (
+                <p style={{ color: '#aaa', fontSize: '0.88rem' }}>No dietary restrictions available.</p>
+              ) : (
+                <div className='d-flex flex-column gap-2'>
+                  {allRestrictions.map((r) => (
+                    <Form.Check
+                      key={r.key}
+                      type='checkbox'
+                      id={`restriction-${r.key}`}
+                      label={r.display_name}
+                      checked={myRestrictions.includes(r.key)}
+                      onChange={() => handleRestrictionToggle(r.key)}
+                      style={{ fontSize: '0.9rem' }}
+                    />
+                  ))}
+                </div>
+              )}
+            </Card.Body>
+          </Card>
+        )}
 
         {/* Change Password */}
         <Card className='cu-auth-card p-4 mb-4'>
@@ -242,7 +315,6 @@ function Profile() {
               Change Password
             </h5>
             <p className='cu-auth-subtitle mb-3'>Enter your current password to set a new one</p>
-
             {passwordError && (
               <Alert variant='danger' className='py-2' style={{ fontSize: '0.88rem' }}>
                 {passwordError}
@@ -253,7 +325,6 @@ function Profile() {
                 {passwordSuccess}
               </Alert>
             )}
-
             <Form onSubmit={handlePasswordSubmit}>
               <Form.Group className='mb-3'>
                 <Form.Label className='cu-form-label'>Current Password</Form.Label>
@@ -291,13 +362,11 @@ function Profile() {
               Delete Account
             </h5>
             <p className='cu-auth-subtitle mb-3'>This action is permanent and cannot be undone</p>
-
             {deleteError && (
               <Alert variant='danger' className='py-2' style={{ fontSize: '0.88rem' }}>
                 {deleteError}
               </Alert>
             )}
-
             <Form onSubmit={handleDelete}>
               <Form.Group className='mb-4'>
                 <Form.Label className='cu-form-label'>Confirm Password</Form.Label>
