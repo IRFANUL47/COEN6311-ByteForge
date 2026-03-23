@@ -1,7 +1,10 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
-from .models import CustomUser, DietaryRestriction, UserDietaryRestriction, NutritionPlan
+from .models import (
+    CustomUser, DietaryRestriction, UserDietaryRestriction,
+    NutritionPlan, WorkoutPlan, WorkoutDay, Exercise, WorkoutSession
+)
 
 User = get_user_model()
 
@@ -192,3 +195,165 @@ class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         return super().update(instance, validated_data)
+    
+    # ─────────────────────────────────────────────
+# WORKOUT SERIALIZERS
+# ─────────────────────────────────────────────
+
+class ExerciseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Exercise
+        fields = ("id", "name", "sets", "reps", "duration_secs", "notes")
+
+
+class WorkoutDaySerializer(serializers.ModelSerializer):
+    exercises = ExerciseSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = WorkoutDay
+        fields = ("id", "day_number", "label", "notes", "exercises")
+
+
+class WorkoutPlanSerializer(serializers.ModelSerializer):
+    """Read serializer — returns full nested detail including days and exercises."""
+    coach   = serializers.SerializerMethodField(read_only=True)
+    student = serializers.SerializerMethodField(read_only=True)
+    days    = WorkoutDaySerializer(many=True, read_only=True)
+
+    class Meta:
+        model = WorkoutPlan
+        fields = (
+            "id",
+            "title",
+            "goal",
+            "start_date",
+            "end_date",
+            "is_active",
+            "coach",
+            "student",
+            "days",
+            "created_at",
+            "updated_at",
+        )
+        read_only_fields = ("coach", "created_at", "updated_at")
+
+    def get_coach(self, obj):
+        if obj.coach is None:
+            return None
+        return {
+            "id": obj.coach.id,
+            "name": f"{obj.coach.first_name} {obj.coach.last_name}".strip(),
+            "concordia_id": getattr(obj.coach, "concordia_id", None),
+        }
+
+    def get_student(self, obj):
+        if obj.student is None:
+            return None
+        return {
+            "id": obj.student.id,
+            "name": f"{obj.student.first_name} {obj.student.last_name}".strip(),
+            "concordia_id": getattr(obj.student, "concordia_id", None),
+        }
+
+
+class ExerciseCreateSerializer(serializers.Serializer):
+    """Write serializer for a single exercise inside a day."""
+    name          = serializers.CharField(max_length=150)
+    sets          = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    reps          = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    duration_secs = serializers.IntegerField(required=False, allow_null=True, min_value=1)
+    notes         = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class WorkoutDayCreateSerializer(serializers.Serializer):
+    """Write serializer for a single day inside a plan."""
+    day_number = serializers.IntegerField(min_value=1)
+    label      = serializers.CharField(max_length=100)
+    notes      = serializers.CharField(required=False, allow_blank=True, default="")
+    exercises  = ExerciseCreateSerializer(many=True, required=False, default=list)
+
+
+class WorkoutPlanCreateUpdateSerializer(serializers.ModelSerializer):
+    """Write serializer — accepts nested days with exercises."""
+    student = serializers.PrimaryKeyRelatedField(queryset=User.objects.none())
+    days    = WorkoutDayCreateSerializer(many=True, required=False, default=list)
+
+    class Meta:
+        model = WorkoutPlan
+        fields = (
+            "id",
+            "title",
+            "goal",
+            "start_date",
+            "end_date",
+            "is_active",
+            "student",
+            "days",
+        )
+        read_only_fields = ("id",)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Same pattern as NutritionPlanCreateUpdateSerializer
+        try:
+            self.fields["student"].queryset = User.objects.filter(role=User.Role.STUDENT)
+        except Exception:
+            self.fields["student"].queryset = User.objects.all()
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        if request is None:
+            return attrs
+
+        user = request.user
+        if not (getattr(user, "role", None) == User.Role.COACH):
+            raise serializers.ValidationError("Only coaches may create or update workout plans.")
+
+        student = attrs.get("student")
+        if student and getattr(student, "role", None) != User.Role.STUDENT:
+            raise serializers.ValidationError({"student": "The selected user is not a student."})
+
+        start = attrs.get("start_date")
+        end   = attrs.get("end_date")
+        if start and end and end < start:
+            raise serializers.ValidationError({"end_date": "end_date must be the same or after start_date."})
+
+        # Day numbers must be unique within the plan
+        days = attrs.get("days", [])
+        day_numbers = [d["day_number"] for d in days]
+        if len(day_numbers) != len(set(day_numbers)):
+            raise serializers.ValidationError({"days": "Day numbers must be unique within a plan."})
+
+        return attrs
+
+    def _save_days(self, plan, days_data):
+        """Create WorkoutDay and Exercise records for the plan."""
+        for day_data in days_data:
+            exercises_data = day_data.pop("exercises", [])
+            day = WorkoutDay.objects.create(plan=plan, **day_data)
+            for exercise_data in exercises_data:
+                Exercise.objects.create(workout_day=day, **exercise_data)
+
+    def create(self, validated_data):
+        request   = self.context.get("request")
+        coach     = request.user if request else None
+        days_data = validated_data.pop("days", [])
+
+        plan = WorkoutPlan.objects.create(coach=coach, **validated_data)
+        self._save_days(plan, days_data)
+        return plan
+
+    def update(self, instance, validated_data):
+        days_data = validated_data.pop("days", None)
+
+        # Update plan fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # If days are provided, replace them entirely
+        if days_data is not None:
+            instance.days.all().delete()
+            self._save_days(instance, days_data)
+
+        return instance
