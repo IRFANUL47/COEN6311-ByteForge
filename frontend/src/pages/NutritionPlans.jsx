@@ -3,6 +3,23 @@ import { Card, Button, Modal, Form, Alert, Row, Col, Badge } from 'react-bootstr
 import api from '../api/axios';
 import { useAuth } from '../context/auth/useAuth';
 
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const MEALS = ['breakfast', 'lunch', 'dinner'];
+
+const emptySchedule = () =>
+  DAYS.reduce((acc, day) => {
+    acc[day.toLowerCase()] = { breakfast: '', lunch: '', dinner: '' };
+    return acc;
+  }, {});
+
+const hasScheduleData = (plan) => {
+  if (!plan?.plan) return false;
+  return DAYS.some((day) => {
+    const d = plan.plan[day.toLowerCase()];
+    return d && (d.breakfast || d.lunch || d.dinner);
+  });
+};
+
 function NutritionPlans() {
   const { user } = useAuth();
   const isCoach = user?.role === 'COACH';
@@ -11,7 +28,6 @@ function NutritionPlans() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Step 1 — student lookup modal
   const [showLookup, setShowLookup] = useState(false);
   const [concordiaInput, setConcordiaInput] = useState('');
   const [lookupError, setLookupError] = useState('');
@@ -19,7 +35,6 @@ function NutritionPlans() {
   const [foundStudent, setFoundStudent] = useState(null);
   const [studentRestrictions, setStudentRestrictions] = useState([]);
 
-  // Step 2 — create plan modal
   const [showCreate, setShowCreate] = useState(false);
   const [planForm, setPlanForm] = useState({
     title: '',
@@ -32,10 +47,11 @@ function NutritionPlans() {
     end_date: '',
     is_active: true,
   });
+  const [showSchedule, setShowSchedule] = useState(false);
+  const [schedule, setSchedule] = useState(emptySchedule());
   const [createError, setCreateError] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
 
-  // Detail modal
   const [showDetail, setShowDetail] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
 
@@ -94,14 +110,26 @@ function NutritionPlans() {
       end_date: '',
       is_active: true,
     });
+    setSchedule(emptySchedule());
+    setShowSchedule(false);
     setCreateError('');
     setShowCreate(true);
+  };
+
+  const handleScheduleChange = (day, meal, value) => {
+    setSchedule((prev) => ({ ...prev, [day]: { ...prev[day], [meal]: value } }));
   };
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     setCreateError('');
     setCreateLoading(true);
+
+    const hasAnySchedule = DAYS.some((day) => {
+      const d = schedule[day.toLowerCase()];
+      return d.breakfast || d.lunch || d.dinner;
+    });
+
     try {
       await api.post('/nutrition-plans/create/', {
         ...planForm,
@@ -112,6 +140,7 @@ function NutritionPlans() {
         fats_g: planForm.fats_g || null,
         start_date: planForm.start_date || null,
         end_date: planForm.end_date || null,
+        plan: hasAnySchedule ? schedule : null,
       });
       setShowCreate(false);
       setFoundStudent(null);
@@ -145,6 +174,13 @@ function NutritionPlans() {
     borderRadius: '10px',
     cursor: 'pointer',
     transition: 'box-shadow 0.15s',
+  };
+  const labelStyle = {
+    fontSize: '0.75rem',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    color: '#888',
+    fontWeight: 500,
   };
 
   return (
@@ -247,7 +283,6 @@ function NutritionPlans() {
               {lookupLoading ? 'Searching...' : 'Find Student'}
             </Button>
           </Form>
-
           {foundStudent && (
             <div
               style={{
@@ -419,6 +454,48 @@ function NutritionPlans() {
                 />
               </Col>
             </Row>
+
+            {/* Weekly Schedule Toggle */}
+            <div
+              style={{
+                borderTop: '1px solid #f0eaea',
+                marginTop: '0.5rem',
+                paddingTop: '1rem',
+                marginBottom: '1rem',
+                cursor: 'pointer',
+                userSelect: 'none',
+              }}
+              onClick={() => setShowSchedule(!showSchedule)}
+            >
+              <span style={{ fontSize: '0.88rem', color: '#912338', fontWeight: 500 }}>
+                {showSchedule ? '▾' : '▸'} Weekly Meal Schedule (optional)
+              </span>
+            </div>
+
+            {showSchedule && (
+              <div style={{ marginBottom: '1rem' }}>
+                {DAYS.map((day) => (
+                  <div key={day} style={{ marginBottom: '1rem' }}>
+                    <p style={{ ...labelStyle, marginBottom: '0.5rem' }}>{day}</p>
+                    <Row className='g-2'>
+                      {MEALS.map((meal) => (
+                        <Col key={meal}>
+                          <Form.Control
+                            type='text'
+                            className='cu-form-input'
+                            placeholder={meal.charAt(0).toUpperCase() + meal.slice(1)}
+                            style={{ fontSize: '0.82rem' }}
+                            value={schedule[day.toLowerCase()][meal]}
+                            onChange={(e) => handleScheduleChange(day.toLowerCase(), meal, e.target.value)}
+                          />
+                        </Col>
+                      ))}
+                    </Row>
+                  </div>
+                ))}
+              </div>
+            )}
+
             <Button type='submit' className='cu-btn-submit w-100 mt-2' disabled={createLoading}>
               {createLoading ? 'Assigning...' : 'Assign Plan'}
             </Button>
@@ -442,38 +519,16 @@ function NutritionPlans() {
             </p>
             {selectedPlan.notes && (
               <div style={{ marginBottom: '1.25rem' }}>
-                <p
-                  style={{
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    color: '#888',
-                    fontWeight: 500,
-                    marginBottom: '0.3rem',
-                  }}
-                >
-                  Notes
-                </p>
+                <p style={{ ...labelStyle, marginBottom: '0.3rem' }}>Notes</p>
                 <p style={{ fontSize: '0.9rem', color: '#333', marginBottom: 0 }}>{selectedPlan.notes}</p>
               </div>
             )}
-            {(selectedPlan.calories_target ||
-              selectedPlan.protein_g ||
-              selectedPlan.carbs_g ||
-              selectedPlan.fats_g) && (
+            {(selectedPlan.calories_target != null ||
+              selectedPlan.protein_g != null ||
+              selectedPlan.carbs_g != null ||
+              selectedPlan.fats_g != null) && (
               <div style={{ marginBottom: '1.25rem' }}>
-                <p
-                  style={{
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    color: '#888',
-                    fontWeight: 500,
-                    marginBottom: '0.75rem',
-                  }}
-                >
-                  Macros
-                </p>
+                <p style={{ ...labelStyle, marginBottom: '0.75rem' }}>Macros</p>
                 <Row className='g-3'>
                   {selectedPlan.calories_target != null && (
                     <Col xs={6} md={3}>
@@ -528,23 +583,65 @@ function NutritionPlans() {
             )}
             {(selectedPlan.start_date || selectedPlan.end_date) && (
               <div style={{ marginBottom: '1.25rem' }}>
-                <p
-                  style={{
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                    color: '#888',
-                    fontWeight: 500,
-                    marginBottom: '0.3rem',
-                  }}
-                >
-                  Duration
-                </p>
-                <p style={{ fontSize: '0.9rem', color: '#333', marginBottom: 0 }}>
-                  {formatDate(selectedPlan.start_date)} → {formatDate(selectedPlan.end_date)}
-                </p>
+                <p style={{ ...labelStyle, marginBottom: '0.3rem' }}>Duration</p>
+                <div className='d-flex gap-4'>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#aaa' }}>From</div>
+                    <div style={{ fontSize: '0.9rem', color: '#333' }}>{formatDate(selectedPlan.start_date)}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', color: '#aaa' }}>To</div>
+                    <div style={{ fontSize: '0.9rem', color: '#333' }}>{formatDate(selectedPlan.end_date)}</div>
+                  </div>
+                </div>
               </div>
             )}
+
+            {/* Weekly Schedule */}
+            {hasScheduleData(selectedPlan) && (
+              <div style={{ marginBottom: '1.25rem' }}>
+                <p style={{ ...labelStyle, marginBottom: '0.75rem' }}>Weekly Meal Schedule</p>
+                {DAYS.map((day) => {
+                  const d = selectedPlan.plan?.[day.toLowerCase()];
+                  if (!d || (!d.breakfast && !d.lunch && !d.dinner)) return null;
+                  return (
+                    <div
+                      key={day}
+                      style={{
+                        marginBottom: '0.75rem',
+                        padding: '0.75rem',
+                        background: '#fdf8f8',
+                        borderRadius: '8px',
+                        border: '1px solid #f0eaea',
+                      }}
+                    >
+                      <p style={{ ...labelStyle, marginBottom: '0.5rem' }}>{day}</p>
+                      <div className='d-flex flex-column gap-1'>
+                        {d.breakfast && (
+                          <span style={{ fontSize: '0.85rem', color: '#333' }}>
+                            <span style={{ color: '#888', fontSize: '0.78rem' }}>Breakfast: </span>
+                            {d.breakfast}
+                          </span>
+                        )}
+                        {d.lunch && (
+                          <span style={{ fontSize: '0.85rem', color: '#333' }}>
+                            <span style={{ color: '#888', fontSize: '0.78rem' }}>Lunch: </span>
+                            {d.lunch}
+                          </span>
+                        )}
+                        {d.dinner && (
+                          <span style={{ fontSize: '0.85rem', color: '#333' }}>
+                            <span style={{ color: '#888', fontSize: '0.78rem' }}>Dinner: </span>
+                            {d.dinner}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             {isCoach && (
               <div className='d-flex justify-content-between align-items-center'>
                 <Form.Check
