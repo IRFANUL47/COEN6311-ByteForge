@@ -385,7 +385,6 @@ function Profile() {
           </Card.Body>
         </Card>
       </div>
-      <img src={concordiaLogo} alt='Concordia University' className='concordia-logo' />
     </div>
   );
 }
