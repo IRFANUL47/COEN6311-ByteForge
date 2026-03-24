@@ -29,6 +29,12 @@ function AppNavbar() {
                 <Link to='/workouts' className={`cu-nav-link ${location.pathname === '/workouts' ? 'active' : ''}`}>
                   Workout Plans
                 </Link>
+                <Link
+                  to='/nutrition-plans'
+                  className={`cu-nav-link ${location.pathname === '/nutrition-plans' ? 'active' : ''}`}
+                >
+                  Nutrition Plans
+                </Link>
                 <Link to='/profile' className={`cu-nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
                   Profile
                 </Link>

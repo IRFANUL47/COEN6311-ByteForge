@@ -8,6 +8,7 @@ urlpatterns = [
     path("profile/update/", views.update_profile, name="profile-update"),
     path("profile/update/password/", views.update_password, name="profile-update-password"),
     path("profile/delete/", views.delete_profile, name="profile-delete"),
+    path("profile/<str:concordia_id>/", views.get_student_profile_by_concordia_id, name="profile-info"),
 
     path('equipment/', views.equipment_list, name='equipment-list'),
     path('equipment/create/', views.equipment_create, name='equipment-create'),

@@ -11,7 +11,7 @@ function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, updateDietaryRestrictions } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,6 +20,18 @@ function Login() {
     try {
       const response = await api.post('/auth/login/', { concordia_id: concordiaId, password });
       login(response.data.user, response.data.tokens);
+
+      if (response.data.user.role === 'STUDENT') {
+        try {
+          const restrictionsRes = await api.get('/dietary-restrictions/');
+          updateDietaryRestrictions(restrictionsRes.data.map((r) => r.dietary_restriction));
+        } catch {
+          updateDietaryRestrictions([]);
+        }
+      } else {
+        updateDietaryRestrictions([]);
+      }
+
       navigate('/dashboard');
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please try again.');

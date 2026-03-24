@@ -33,6 +33,16 @@ class RegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError("A user with this Concordia ID already exists.")
         return value
 
+    def validate_first_name(self, value: str) -> str:
+        if not value.strip().replace(' ', '').isalpha():
+            raise serializers.ValidationError("First name must contain letters only.")
+        return value.strip()
+
+    def validate_last_name(self, value: str) -> str:
+        if not value.strip().replace(' ', '').isalpha():
+            raise serializers.ValidationError("Last name must contain letters only.")
+        return value.strip()
+
     def create(self, validated_data):
         first_name = validated_data["first_name"].strip()
         last_name = validated_data["last_name"].strip()

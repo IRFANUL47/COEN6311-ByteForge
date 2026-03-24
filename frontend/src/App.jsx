@@ -6,6 +6,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Equipment from './pages/Equipment';
+import Dashboard from './pages/Dashboard';
+import NutritionPlans from './pages/NutritionPlans';
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -24,7 +26,7 @@ function App() {
           path='/dashboard'
           element={
             <ProtectedRoute>
-              <div>Dashboard</div>
+              <Dashboard />
             </ProtectedRoute>
           }
         />
@@ -33,6 +35,14 @@ function App() {
           element={
             <ProtectedRoute>
               <div>Workouts</div>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/nutrition-plans'
+          element={
+            <ProtectedRoute>
+              <NutritionPlans />
             </ProtectedRoute>
           }
         />

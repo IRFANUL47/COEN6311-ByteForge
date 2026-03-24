@@ -15,11 +15,18 @@ def update_profile(request):
     data = request.data
 
     new_email = data.get("email", user.email)
+    new_first_name = data.get("first_name", user.first_name) or user.first_name
+    new_last_name = data.get("last_name", user.last_name) or user.last_name
+
     if new_email != user.email and User.objects.filter(email__iexact=new_email).exists():
         return Response({"detail": "This email is already in use."}, status=status.HTTP_400_BAD_REQUEST)
-
-    user.first_name = data.get("first_name", user.first_name) or user.first_name
-    user.last_name = data.get("last_name", user.last_name) or user.last_name
+    if not new_first_name.strip().replace(' ', '').isalpha():
+        return Response({"detail": "First name must contain letters only."}, status=status.HTTP_400_BAD_REQUEST)
+    if not new_last_name.strip().replace(' ', '').isalpha():
+        return Response({"detail": "Last name must contain letters only."}, status=status.HTTP_400_BAD_REQUEST)
+    
+    user.first_name = new_first_name
+    user.last_name = new_last_name
     user.email = new_email or user.email
     user.gender = data.get("gender", user.gender) or user.gender
     user.height = float(data.get("height", user.height)) if data.get("height") else user.height
@@ -27,6 +34,7 @@ def update_profile(request):
     user.age = int(data.get("age", user.age)) if data.get("age") else user.age
     user.save()
     
+
     height = user.height
     weight = user.weight
     bmi = round(weight / ((height / 100) ** 2), 1) if height and weight else None
@@ -75,3 +83,19 @@ def delete_profile(request):
 
     user.delete()
     return Response({"detail": "Account deleted."}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_student_profile_by_concordia_id(request, concordia_id):
+    if request.user.role != 'COACH':
+        return Response({"detail": "Only coaches can look up students."}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        student = User.objects.get(concordia_id=concordia_id, role='STUDENT')
+    except User.DoesNotExist:
+        return Response({"detail": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+    return Response({
+        "id": student.id,
+        "first_name": student.first_name,
+        "last_name": student.last_name,
+        "concordia_id": student.concordia_id,
+    }, status=status.HTTP_200_OK)
