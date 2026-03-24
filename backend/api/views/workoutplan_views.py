@@ -98,7 +98,7 @@ def workoutplan_delete(request, pk):
         )
 
     plan.delete()
-    return Response({"detail": "Workout plan deleted."}, status=status.HTTP_204_NO_CONTENT)
+    return Response({"detail": "Workout plan deleted."}, status=status.HTTP_200_OK)
 
 
 # ── US2: Mark a session as completed ──────────────────────────────────────────

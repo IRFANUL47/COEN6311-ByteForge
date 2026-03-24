@@ -89,4 +89,4 @@ def equipment_delete(request, pk):
         return Response({'detail': 'Equipment not found.'}, status=status.HTTP_404_NOT_FOUND)
 
     equipment.delete()
-    return Response({'detail': 'Equipment deleted.'}, status=status.HTTP_204_NO_CONTENT)
+    return Response({'detail': 'Equipment deleted.'}, status=status.HTTP_200_OK)

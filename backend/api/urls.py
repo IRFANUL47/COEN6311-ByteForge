@@ -26,6 +26,7 @@ urlpatterns = [
     path("dietary-restrictions/remove/", views.remove_dietary_restriction, name="remove_dietary_restriction"),
     path("dietary-restrictions/all/", views.all_dietary_restrictions, name="all_dietary_restrictions"),
     path("dietary-restrictions/<str:concordia_id>/", views.dietary_restrictions_by_concordia_id, name="dietary_restrictions_by_concordia_id"),
+    
     path("workout-plans/", views.workoutplan_list, name="workoutplan-list"),
     path("workout-plans/create/", views.workoutplan_create, name="workoutplan-create"),
     path("workout-plans/<int:pk>/", views.workoutplan_detail, name="workoutplan-detail"),
