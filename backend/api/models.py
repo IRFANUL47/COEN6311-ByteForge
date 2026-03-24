@@ -133,3 +133,134 @@ class NutritionPlan(models.Model):
         if getattr(user, "is_superuser", False):
             return True
         return user.pk == self.coach_id
+    
+    # ──────────────────────────────────────────────
+# WORKOUT PLAN
+# Follows the same pattern as NutritionPlan
+# ──────────────────────────────────────────────
+class WorkoutPlan(models.Model):
+    coach = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="workout_plans_given",
+        help_text="Coach who created the plan",
+    )
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="workout_plans_received",
+        help_text="Student who receives the plan",
+    )
+
+    title      = models.CharField(max_length=200, blank=True)
+    goal       = models.TextField(blank=True, help_text="Overall goal of the plan, e.g. 'Build upper body strength'")
+    start_date = models.DateField(null=True, blank=True)
+    end_date   = models.DateField(null=True, blank=True)
+    is_active  = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Workout Plan"
+        verbose_name_plural = "Workout Plans"
+        indexes = [
+            models.Index(fields=["coach"]),
+            models.Index(fields=["student"]),
+            models.Index(fields=["is_active", "start_date"]),
+        ]
+
+    def __str__(self):
+        title = f" - {self.title}" if self.title else ""
+        return f"WorkoutPlan: {self.student} by {self.coach}{title}"
+
+    def clean(self):
+        # Coach and student must be different users
+        if self.coach_id and self.student_id and self.coach_id == self.student_id:
+            raise ValidationError("Coach and student must be different users.")
+
+        # Validate roles — same pattern as NutritionPlan
+        coach_role   = getattr(self.coach,   "role", None)
+        student_role = getattr(self.student, "role", None)
+
+        if coach_role is not None and coach_role != CustomUser.Role.COACH:
+            raise ValidationError({"coach": "Assigned coach must have role COACH."})
+        if student_role is not None and student_role != CustomUser.Role.STUDENT:
+            raise ValidationError({"student": "Assigned student must have role STUDENT."})
+
+        if self.start_date and self.end_date and self.end_date < self.start_date:
+            raise ValidationError({"end_date": "end_date must be the same or after start_date."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def is_editable_by(self, user):
+        if user is None:
+            return False
+        if getattr(user, "is_superuser", False):
+            return True
+        return user.pk == self.coach_id
+
+
+# ──────────────────────────────────────────────
+# WORKOUT DAY
+# A named day within the plan, e.g. "Day 1 - Upper Body"
+# ──────────────────────────────────────────────
+class WorkoutDay(models.Model):
+    plan       = models.ForeignKey(WorkoutPlan, on_delete=models.CASCADE, related_name="days")
+    day_number = models.PositiveIntegerField()
+    label      = models.CharField(max_length=100, help_text="e.g. 'Push Day', 'Leg Day'")
+    notes      = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["day_number"]
+        unique_together = ("plan", "day_number")
+
+    def __str__(self):
+        return f"{self.plan.title} — Day {self.day_number}: {self.label}"
+
+
+# ──────────────────────────────────────────────
+# EXERCISE
+# Individual exercise inside a WorkoutDay
+# ──────────────────────────────────────────────
+class Exercise(models.Model):
+    workout_day   = models.ForeignKey(WorkoutDay, on_delete=models.CASCADE, related_name="exercises")
+    name          = models.CharField(max_length=150)
+    sets          = models.PositiveIntegerField(null=True, blank=True)
+    reps          = models.PositiveIntegerField(null=True, blank=True)
+    duration_secs = models.PositiveIntegerField(null=True, blank=True, help_text="For timed exercises, e.g. planks")
+    notes         = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.name} — {self.sets}x{self.reps}"
+
+
+# ──────────────────────────────────────────────
+# WORKOUT SESSION
+# Tracks a student completing a WorkoutDay (US2)
+# ──────────────────────────────────────────────
+class WorkoutSession(models.Model):
+    class Status(models.TextChoices):
+        PENDING   = "PENDING",   "Pending"
+        COMPLETED = "COMPLETED", "Completed"
+        MISSED    = "MISSED",    "Missed"
+
+    student     = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="workout_sessions"
+    )
+    plan        = models.ForeignKey(WorkoutPlan, on_delete=models.CASCADE, related_name="sessions")
+    workout_day = models.ForeignKey(WorkoutDay,  on_delete=models.SET_NULL, null=True, related_name="sessions")
+    status       = models.CharField(max_length=15, choices=Status.choices, default=Status.PENDING)
+    scheduled_at = models.DateTimeField()
+    completed_at = models.DateTimeField(null=True, blank=True)  # filled on "Mark as Completed"
+
+    class Meta:
+        ordering = ["scheduled_at"]
+
+    def __str__(self):
+        return f"{self.student.username} — {self.workout_day} [{self.status}]"

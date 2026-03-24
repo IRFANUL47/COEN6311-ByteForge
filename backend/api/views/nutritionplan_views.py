@@ -80,4 +80,4 @@ def nutritionplan_delete(request, pk):
         return Response({"detail": "Only the coach who created the plan can delete it."}, status=status.HTTP_403_FORBIDDEN)
 
     plan.delete()
-    return Response({"detail": "Nutrition plan deleted."}, status=status.HTTP_204_NO_CONTENT)
+    return Response({"detail": "Nutrition plan deleted."}, status=status.HTTP_200_OK)
