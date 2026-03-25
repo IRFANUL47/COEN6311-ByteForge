@@ -8,6 +8,7 @@ urlpatterns = [
     path("profile/update/", views.update_profile, name="profile-update"),
     path("profile/update/password/", views.update_password, name="profile-update-password"),
     path("profile/delete/", views.delete_profile, name="profile-delete"),
+    path("profile/<str:concordia_id>/", views.get_student_profile_by_concordia_id, name="profile-info"),
 
     path('equipment/', views.equipment_list, name='equipment-list'),
     path('equipment/create/', views.equipment_create, name='equipment-create'),
@@ -25,4 +26,5 @@ urlpatterns = [
     path("dietary-restrictions/remove/", views.remove_dietary_restriction, name="remove_dietary_restriction"),
     path("dietary-restrictions/all/", views.all_dietary_restrictions, name="all_dietary_restrictions"),
     path("dietary-restrictions/<str:concordia_id>/", views.dietary_restrictions_by_concordia_id, name="dietary_restrictions_by_concordia_id"),
+    path("chat/", views.chat, name="chat"),
 ]

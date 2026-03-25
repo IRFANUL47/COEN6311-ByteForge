@@ -83,3 +83,19 @@ def delete_profile(request):
 
     user.delete()
     return Response({"detail": "Account deleted."}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_student_profile_by_concordia_id(request, concordia_id):
+    if request.user.role != 'COACH':
+        return Response({"detail": "Only coaches can look up students."}, status=status.HTTP_403_FORBIDDEN)
+    try:
+        student = User.objects.get(concordia_id=concordia_id, role='STUDENT')
+    except User.DoesNotExist:
+        return Response({"detail": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+    return Response({
+        "id": student.id,
+        "first_name": student.first_name,
+        "last_name": student.last_name,
+        "concordia_id": student.concordia_id,
+    }, status=status.HTTP_200_OK)

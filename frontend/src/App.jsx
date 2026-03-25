@@ -7,6 +7,8 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import Equipment from './pages/Equipment';
 import Dashboard from './pages/Dashboard';
+import NutritionPlans from './pages/NutritionPlans';
+import ChatWidget from './components/ChatWidget';
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -14,6 +16,8 @@ function HomeRedirect() {
 }
 
 function App() {
+  const { user, tokens } = useAuth();
+
   return (
     <BrowserRouter>
       <AppNavbar />
@@ -38,6 +42,14 @@ function App() {
           }
         />
         <Route
+          path='/nutrition-plans'
+          element={
+            <ProtectedRoute>
+              <NutritionPlans />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path='/profile'
           element={
             <ProtectedRoute>
@@ -54,6 +66,7 @@ function App() {
           }
         />
       </Routes>
+      {user && <ChatWidget tokens={tokens} />}
     </BrowserRouter>
   );
 }

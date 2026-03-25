@@ -1,5 +1,6 @@
 from .auth_views import register, login
-from .profile_views import update_profile, update_password, delete_profile
+from .profile_views import update_profile, update_password, delete_profile, get_student_profile_by_concordia_id
 from .equipment_views import equipment_list, equipment_create, equipment_update, equipment_delete
 from .nutritionplan_views import nutritionplan_list, nutritionplan_create, nutritionplan_detail, nutritionplan_update, nutritionplan_delete
 from .dietaryrestriction_views import my_dietary_restrictions, add_dietary_restriction, remove_dietary_restriction, all_dietary_restrictions, dietary_restrictions_by_concordia_id
+from .chat_views import chat
