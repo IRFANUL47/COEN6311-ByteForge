@@ -230,9 +230,7 @@ function NutritionPlans() {
                     <h5 style={{ margin: 0, fontFamily: 'var(--cu-font-brand)', fontSize: '1.1rem', color: '#1a1a1a' }}>
                       {plan.title || 'Untitled Plan'}
                     </h5>
-                    <Badge style={{ background: plan.is_active ? '#508212' : '#aaa', fontSize: '0.72rem' }}>
-                      {plan.is_active ? 'Active' : 'Inactive'}
-                    </Badge>
+                    <Badge bg={plan.is_active ? 'success' : 'danger'}>{plan.is_active ? 'Active' : 'Inactive'}</Badge>
                   </div>
                   <p style={{ fontSize: '0.82rem', color: '#888', margin: '0 0 0.75rem' }}>
                     {isCoach
