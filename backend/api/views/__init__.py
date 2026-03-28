@@ -4,3 +4,4 @@ from .equipment_views import equipment_list, equipment_create, equipment_update,
 from .nutritionplan_views import nutritionplan_list, nutritionplan_create, nutritionplan_detail, nutritionplan_update, nutritionplan_delete
 from .dietaryrestriction_views import my_dietary_restrictions, add_dietary_restriction, remove_dietary_restriction, all_dietary_restrictions, dietary_restrictions_by_concordia_id
 from .workoutplan_views import (workoutplan_list, workoutplan_create, workoutplan_detail, workoutplan_update, workoutplan_delete, workoutsession_complete,)
+from .chat_views import chat
