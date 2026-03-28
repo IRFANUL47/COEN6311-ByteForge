@@ -9,6 +9,8 @@ import Equipment from './pages/Equipment';
 import Dashboard from './pages/Dashboard';
 import NutritionPlans from './pages/NutritionPlans';
 import ChatWidget from './components/ChatWidget';
+import WorkoutPlans from './pages/WorkoutPlans';
+
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -37,7 +39,7 @@ function App() {
           path='/workouts'
           element={
             <ProtectedRoute>
-              <div>Workouts</div>
+              <WorkoutPlans />
             </ProtectedRoute>
           }
         />
