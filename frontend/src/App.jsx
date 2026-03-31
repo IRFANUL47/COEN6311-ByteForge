@@ -17,7 +17,7 @@ function HomeRedirect() {
 }
 
 function App() {
-  const { user, tokens } = useAuth();
+  const { user } = useAuth();
   return (
     <BrowserRouter>
       <AppNavbar />
@@ -66,7 +66,7 @@ function App() {
           }
         />
       </Routes>
-      {user && <ChatWidget tokens={tokens} />}
+      {user && <ChatWidget />}
     </BrowserRouter>
   );
 }
