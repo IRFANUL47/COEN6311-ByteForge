@@ -33,4 +33,5 @@ urlpatterns = [
     path("workout-plans/<int:pk>/update/", views.workoutplan_update, name="workoutplan-update"),
     path("workout-plans/<int:pk>/delete/", views.workoutplan_delete, name="workoutplan-delete"),
     path("workout-sessions/<int:pk>/complete/", views.workoutsession_complete, name="workoutsession-complete"),
+    path("chat/", views.chat, name="chat"),
 ]
