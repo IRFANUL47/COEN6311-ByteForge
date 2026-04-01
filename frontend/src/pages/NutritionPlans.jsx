@@ -20,6 +20,14 @@ const hasScheduleData = (plan) => {
   });
 };
 
+const labelStyle = {
+  fontSize: '0.75rem',
+  textTransform: 'uppercase',
+  letterSpacing: '0.5px',
+  color: '#888',
+  fontWeight: 500,
+};
+
 function NutritionPlans() {
   const { user } = useAuth();
   const isCoach = user?.role === 'COACH';
@@ -27,6 +35,9 @@ function NutritionPlans() {
   const [plans, setPlans] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
 
   const [showLookup, setShowLookup] = useState(false);
   const [concordiaInput, setConcordiaInput] = useState('');
@@ -57,8 +68,7 @@ function NutritionPlans() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '—';
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { day: 'numeric', month: 'long' });
+    return new Date(dateStr).toLocaleDateString('en-US', { day: 'numeric', month: 'long' });
   };
 
   const fetchPlans = async () => {
@@ -76,6 +86,21 @@ function NutritionPlans() {
   useEffect(() => {
     fetchPlans();
   }, []);
+
+  const filteredPlans = plans.filter((plan) => {
+    const q = search.toLowerCase();
+    const matchesSearch =
+      !q ||
+      plan.title?.toLowerCase().includes(q) ||
+      plan.student?.name?.toLowerCase().includes(q) ||
+      plan.student?.concordia_id?.includes(q) ||
+      plan.coach?.name?.toLowerCase().includes(q);
+    const matchesStatus =
+      statusFilter === 'ALL' ||
+      (statusFilter === 'ACTIVE' && plan.is_active) ||
+      (statusFilter === 'INACTIVE' && !plan.is_active);
+    return matchesSearch && matchesStatus;
+  });
 
   const handleLookup = async (e) => {
     e.preventDefault();
@@ -124,12 +149,10 @@ function NutritionPlans() {
     e.preventDefault();
     setCreateError('');
     setCreateLoading(true);
-
     const hasAnySchedule = DAYS.some((day) => {
       const d = schedule[day.toLowerCase()];
       return d.breakfast || d.lunch || d.dinner;
     });
-
     try {
       await api.post('/nutrition-plans/create/', {
         ...planForm,
@@ -175,13 +198,6 @@ function NutritionPlans() {
     cursor: 'pointer',
     transition: 'box-shadow 0.15s',
   };
-  const labelStyle = {
-    fontSize: '0.75rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.5px',
-    color: '#888',
-    fontWeight: 500,
-  };
 
   return (
     <div style={{ padding: '2rem 2.5rem', fontFamily: 'var(--cu-font-body)' }}>
@@ -204,7 +220,7 @@ function NutritionPlans() {
           </Button>
         )}
       </div>
-      <p className='cu-auth-subtitle mb-4'>
+      <p className='cu-auth-subtitle mb-3'>
         {isCoach ? 'Plans you have assigned to students' : 'Your assigned nutrition plan'}
       </p>
 
@@ -214,15 +230,50 @@ function NutritionPlans() {
         </Alert>
       )}
 
+      {/* Filters */}
+      <div className='d-flex gap-2 mb-4 align-items-center'>
+        <Form.Control
+          type='text'
+          className='cu-form-input'
+          placeholder={isCoach ? 'Search by title or student name / ID...' : 'Search by title or coach name...'}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ maxWidth: 320, fontSize: '0.88rem' }}
+        />
+        {['ALL', 'ACTIVE', 'INACTIVE'].map((s) => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            style={{
+              border: '1.5px solid',
+              borderColor: statusFilter === s ? '#912338' : '#e4dcdc',
+              background: statusFilter === s ? '#912338' : '#fff',
+              color: statusFilter === s ? '#fff' : '#888',
+              borderRadius: '20px',
+              padding: '0.25rem 0.85rem',
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              fontWeight: statusFilter === s ? 600 : 400,
+            }}
+          >
+            {s === 'ALL' ? 'All' : s === 'ACTIVE' ? 'Active' : 'Inactive'}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <p style={{ color: '#aaa' }}>Loading...</p>
-      ) : plans.length === 0 ? (
+      ) : filteredPlans.length === 0 ? (
         <p style={{ color: '#aaa', fontSize: '0.9rem' }}>
-          {isCoach ? 'You have not assigned any plans yet.' : 'No nutrition plan assigned to you yet.'}
+          {plans.length === 0
+            ? isCoach
+              ? 'You have not assigned any plans yet.'
+              : 'No nutrition plan assigned to you yet.'
+            : 'No plans match your search.'}
         </p>
       ) : (
         <Row className='g-4'>
-          {plans.map((plan) => (
+          {filteredPlans.map((plan) => (
             <Col md={6} key={plan.id}>
               <Card className='cu-auth-card p-4' style={cardStyle} onClick={() => openDetail(plan)}>
                 <Card.Body>
@@ -452,8 +503,6 @@ function NutritionPlans() {
                 />
               </Col>
             </Row>
-
-            {/* Weekly Schedule Toggle */}
             <div
               style={{
                 borderTop: '1px solid #f0eaea',
@@ -469,7 +518,6 @@ function NutritionPlans() {
                 {showSchedule ? '▾' : '▸'} Weekly Meal Schedule (optional)
               </span>
             </div>
-
             {showSchedule && (
               <div style={{ marginBottom: '1rem' }}>
                 {DAYS.map((day) => (
@@ -493,7 +541,6 @@ function NutritionPlans() {
                 ))}
               </div>
             )}
-
             <Button type='submit' className='cu-btn-submit w-100 mt-2' disabled={createLoading}>
               {createLoading ? 'Assigning...' : 'Assign Plan'}
             </Button>
@@ -594,8 +641,6 @@ function NutritionPlans() {
                 </div>
               </div>
             )}
-
-            {/* Weekly Schedule */}
             {hasScheduleData(selectedPlan) && (
               <div style={{ marginBottom: '1.25rem' }}>
                 <p style={{ ...labelStyle, marginBottom: '0.75rem' }}>Weekly Meal Schedule</p>
@@ -639,7 +684,6 @@ function NutritionPlans() {
                 })}
               </div>
             )}
-
             {isCoach && (
               <div className='d-flex justify-content-between align-items-center'>
                 <Form.Check
