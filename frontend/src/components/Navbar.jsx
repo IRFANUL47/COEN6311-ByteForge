@@ -41,6 +41,9 @@ function AppNavbar() {
                 <Link to='/equipment' className={`cu-nav-link ${location.pathname === '/equipment' ? 'active' : ''}`}>
                   Equipment
                 </Link>
+                <Link to='/sessions' className={`cu-nav-link ${location.pathname === '/sessions' ? 'active' : ''}`}>
+                  Sessions
+                </Link>
               </Nav>
               <Nav className='align-items-center gap-2'>
                 <Button className='cu-btn-login' size='sm' onClick={handleLogout}>
