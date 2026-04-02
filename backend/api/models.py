@@ -264,3 +264,16 @@ class WorkoutSession(models.Model):
 
     def __str__(self):
         return f"{self.student.username} — {self.workout_day} [{self.status}]"
+
+class ChatRating(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chat_ratings')
+    message = models.TextField()
+    response = models.TextField()
+    rating = models.CharField(max_length=10, choices=[('up', 'Thumbs Up'), ('down', 'Thumbs Down')])
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.user.username} - {self.rating} - {self.created_at}"
