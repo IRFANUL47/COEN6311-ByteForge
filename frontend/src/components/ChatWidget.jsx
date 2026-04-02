@@ -80,6 +80,64 @@ function CopyButton({ text }) {
   );
 }
 
+function RatingButtons({ userMessage, botResponse }) {
+  const [rated, setRated] = useState(null);
+
+  const handleRate = async (rating) => {
+    if (rated) return;
+    setRated(rating);
+    try {
+      await api.post('/chat/rate/', {
+        message: userMessage,
+        response: botResponse,
+        rating: rating,
+      });
+    } catch (err) {
+      console.error('Rating failed:', err);
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+      <button
+        onClick={() => handleRate('up')}
+        title='Helpful'
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: rated ? 'default' : 'pointer',
+          fontSize: '13px',
+          opacity: rated && rated !== 'up' ? 0.3 : 1,
+          color: rated === 'up' ? '#508212' : '#aaa',
+          padding: '2px 4px',
+        }}
+      >
+        👍
+      </button>
+      <button
+        onClick={() => handleRate('down')}
+        title='Not helpful'
+        style={{
+          background: 'none',
+          border: 'none',
+          cursor: rated ? 'default' : 'pointer',
+          fontSize: '13px',
+          opacity: rated && rated !== 'down' ? 0.3 : 1,
+          color: rated === 'down' ? '#912338' : '#aaa',
+          padding: '2px 4px',
+        }}
+      >
+        👎
+      </button>
+      {rated && (
+        <span style={{ fontSize: '10px', color: '#aaa' }}>
+          {rated === 'up' ? 'Thanks for the feedback!' : 'Sorry to hear that!'}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function SimpleMarkdown({ text }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return (
@@ -97,7 +155,7 @@ function SimpleMarkdown({ text }) {
   );
 }
 
-function MessageBubble({ msg }) {
+function MessageBubble({ msg, prevUserMessage }) {
   const isUser = msg.role === 'user';
 
   return (
@@ -121,6 +179,7 @@ function MessageBubble({ msg }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexDirection: isUser ? 'row-reverse' : 'row' }}>
         <span style={{ fontSize: '10px', color: '#bbb' }}>{msg.timestamp}</span>
         {!isUser && <CopyButton text={msg.text} />}
+        {!isUser && prevUserMessage && <RatingButtons userMessage={prevUserMessage} botResponse={msg.text} />}
       </div>
     </div>
   );
@@ -172,6 +231,13 @@ export default function ChatWidget() {
       e.preventDefault();
       sendMessage();
     }
+  };
+
+  const getPrevUserMessage = (messages, index) => {
+    for (let i = index - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') return messages[i].text;
+    }
+    return null;
   };
 
   return (
@@ -230,7 +296,7 @@ export default function ChatWidget() {
             }}
           >
             {messages.map((m, i) => (
-              <MessageBubble key={i} msg={m} />
+              <MessageBubble key={i} msg={m} prevUserMessage={getPrevUserMessage(messages, i)} />
             ))}
             {loading && (
               <div style={{ color: '#bbb', fontSize: '13px', fontStyle: 'italic' }}>Assistant is typing…</div>
