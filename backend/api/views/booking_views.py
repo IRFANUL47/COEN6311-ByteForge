@@ -1,4 +1,5 @@
 from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -199,8 +200,20 @@ def availability_create(request):
         context={"request": request}
     )
     if serializer.is_valid():
-        serializer.save(coach=user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer.save(coach=user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except DjangoValidationError as e:
+            # full_clean() on the model raises this for unique_together violations
+            messages = e.message_dict if hasattr(e, "message_dict") else {"detail": e.messages}
+            # Friendly message for the duplicate slot case
+            all_msgs = str(messages)
+            if "already exists" in all_msgs.lower():
+                return Response(
+                    {"detail": "You already have a slot at that start time. Please choose a different time."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            return Response(messages, status=status.HTTP_400_BAD_REQUEST)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
