@@ -214,6 +214,9 @@ function WorkoutPlans() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+
   const [showLookup, setShowLookup] = useState(false);
   const [concordiaInput, setConcordiaInput] = useState('');
   const [lookupError, setLookupError] = useState('');
@@ -229,7 +232,6 @@ function WorkoutPlans() {
 
   const [showDetail, setShowDetail] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
-
   const [editMode, setEditMode] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', goal: '', start_date: '', end_date: '', is_active: true });
   const [editDays, setEditDays] = useState(emptyDays());
@@ -256,6 +258,21 @@ function WorkoutPlans() {
   useEffect(() => {
     fetchPlans();
   }, []);
+
+  const filteredPlans = plans.filter((plan) => {
+    const q = search.toLowerCase();
+    const matchesSearch =
+      !q ||
+      plan.title?.toLowerCase().includes(q) ||
+      plan.student?.name?.toLowerCase().includes(q) ||
+      plan.student?.concordia_id?.includes(q) ||
+      plan.coach?.name?.toLowerCase().includes(q);
+    const matchesStatus =
+      statusFilter === 'ALL' ||
+      (statusFilter === 'ACTIVE' && plan.is_active) ||
+      (statusFilter === 'INACTIVE' && !plan.is_active);
+    return matchesSearch && matchesStatus;
+  });
 
   const handleLookup = async (e) => {
     e.preventDefault();
@@ -412,7 +429,7 @@ function WorkoutPlans() {
           </Button>
         )}
       </div>
-      <p className='cu-auth-subtitle mb-4'>
+      <p className='cu-auth-subtitle mb-3'>
         {isCoach ? 'Plans you have assigned to students' : 'Your assigned workout plan'}
       </p>
 
@@ -422,15 +439,50 @@ function WorkoutPlans() {
         </Alert>
       )}
 
+      {/* Filters */}
+      <div className='d-flex gap-2 mb-4 align-items-center'>
+        <Form.Control
+          type='text'
+          className='cu-form-input'
+          placeholder={isCoach ? 'Search by title or student name / ID...' : 'Search by title or coach name...'}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{ maxWidth: 320, fontSize: '0.88rem' }}
+        />
+        {['ALL', 'ACTIVE', 'INACTIVE'].map((s) => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            style={{
+              border: '1.5px solid',
+              borderColor: statusFilter === s ? '#912338' : '#e4dcdc',
+              background: statusFilter === s ? '#912338' : '#fff',
+              color: statusFilter === s ? '#fff' : '#888',
+              borderRadius: '20px',
+              padding: '0.25rem 0.85rem',
+              fontSize: '0.8rem',
+              cursor: 'pointer',
+              fontWeight: statusFilter === s ? 600 : 400,
+            }}
+          >
+            {s === 'ALL' ? 'All' : s === 'ACTIVE' ? 'Active' : 'Inactive'}
+          </button>
+        ))}
+      </div>
+
       {loading ? (
         <p style={{ color: '#aaa' }}>Loading...</p>
-      ) : plans.length === 0 ? (
+      ) : filteredPlans.length === 0 ? (
         <p style={{ color: '#aaa', fontSize: '0.9rem' }}>
-          {isCoach ? 'You have not assigned any plans yet.' : 'No workout plan assigned to you yet.'}
+          {plans.length === 0
+            ? isCoach
+              ? 'You have not assigned any plans yet.'
+              : 'No workout plan assigned to you yet.'
+            : 'No plans match your search.'}
         </p>
       ) : (
         <Row className='g-4'>
-          {plans.map((plan) => (
+          {filteredPlans.map((plan) => (
             <Col md={6} key={plan.id}>
               <Card className='cu-auth-card p-4' style={cardStyle} onClick={() => openDetail(plan)}>
                 <Card.Body>

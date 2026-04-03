@@ -8,9 +8,8 @@ import Profile from './pages/Profile';
 import Equipment from './pages/Equipment';
 import Dashboard from './pages/Dashboard';
 import NutritionPlans from './pages/NutritionPlans';
-import ChatWidget from './components/ChatWidget';
 import WorkoutPlans from './pages/WorkoutPlans';
-
+import ChatWidget from './components/ChatWidget';
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -18,8 +17,7 @@ function HomeRedirect() {
 }
 
 function App() {
-  const { user, tokens } = useAuth();
-
+  const { user } = useAuth();
   return (
     <BrowserRouter>
       <AppNavbar />
@@ -68,7 +66,7 @@ function App() {
           }
         />
       </Routes>
-      {user && <ChatWidget tokens={tokens} />}
+      {user && <ChatWidget />}
     </BrowserRouter>
   );
 }
