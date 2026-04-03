@@ -8,6 +8,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from api.models import ChatRating
 
 SYSTEM_PROMPT = """
 You are CUFitness Assistant, a helpful chatbot for CUFitness — a gym management platform built for Concordia University students.
@@ -112,6 +113,7 @@ Keep answers short, friendly, and helpful.
 If someone asks about a feature not yet built, let them know it is coming soon and provide Le Gym contact info.
 If a question is unrelated to fitness or CUFitness, politely redirect the user.
 Never make up information you are unsure about.
+If the user writes in French, respond entirely in French. Always reply in the same language the user is writing in.
 If the user's question is serious, complex, or they ask to speak to a human, direct them to:
 - Phone: 514-848-2424, ext. 3860
 - Email: legym@concordia.ca
@@ -187,3 +189,27 @@ def chat(request):
             {"error": f"Exception: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+    
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+def rate_chat(request):
+    message = request.data.get("message", "").strip()
+    response = request.data.get("response", "").strip()
+    rating = request.data.get("rating", "").strip()
+
+    if not message or not response or not rating:
+        return Response({"error": "message, response, and rating are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if rating not in ["up", "down"]:
+        return Response({"error": "rating must be 'up' or 'down'."}, status=status.HTTP_400_BAD_REQUEST)
+
+    ChatRating.objects.create(
+        user=request.user,
+        message=message,
+        response=response,
+        rating=rating,
+    )
+
+    return Response({"success": True}, status=status.HTTP_201_CREATED)

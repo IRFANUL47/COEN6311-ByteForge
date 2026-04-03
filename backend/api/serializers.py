@@ -3,7 +3,8 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from .models import (
     CustomUser, DietaryRestriction, UserDietaryRestriction,
-    NutritionPlan, WorkoutPlan, WorkoutDay, Exercise, WorkoutSession
+    NutritionPlan, WorkoutPlan, WorkoutDay, Exercise, WorkoutSession,
+    CoachStudentAssignment, CoachAvailability, BookingRequest, Notification
 )
 
 User = get_user_model()
@@ -206,7 +207,7 @@ class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         return super().update(instance, validated_data)
     
-    # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
 # WORKOUT SERIALIZERS
 # ─────────────────────────────────────────────
 
@@ -367,3 +368,147 @@ class WorkoutPlanCreateUpdateSerializer(serializers.ModelSerializer):
             self._save_days(instance, days_data)
 
         return instance
+    
+# ── BOOKING SERIALIZERS ────────────────────────────────────────────────────────
+
+class CoachListSerializer(serializers.ModelSerializer):
+    """Shows coaches to students when browsing — includes available slot count."""
+    full_name        = serializers.SerializerMethodField()
+    available_slots  = serializers.SerializerMethodField()
+    has_availability = serializers.SerializerMethodField()
+
+    class Meta:
+        model  = CustomUser
+        fields = (
+            "id", "full_name", "email", "concordia_id",
+            "available_slots", "has_availability"
+        )
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip()
+
+    def get_available_slots(self, obj):
+        return obj.availability_slots.filter(is_booked=False).count()
+
+    def get_has_availability(self, obj):
+        return obj.availability_slots.filter(is_booked=False).exists()
+
+
+class CoachStudentAssignmentSerializer(serializers.ModelSerializer):
+    coach_name   = serializers.SerializerMethodField(read_only=True)
+    student_name = serializers.SerializerMethodField(read_only=True)
+    coach        = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.filter(role=CustomUser.Role.COACH, is_approved=True)
+    )
+
+    class Meta:
+        model  = CoachStudentAssignment
+        fields = ("id", "coach", "coach_name", "student", "student_name", "assigned_at")
+        read_only_fields = ("id", "student", "assigned_at")
+
+    def get_coach_name(self, obj):
+        return f"{obj.coach.first_name} {obj.coach.last_name}".strip()
+
+    def get_student_name(self, obj):
+        return f"{obj.student.first_name} {obj.student.last_name}".strip()
+
+    def validate_coach(self, value):
+        if getattr(value, "role", None) != CustomUser.Role.COACH:
+            raise serializers.ValidationError("Selected user is not a coach.")
+        if not value.is_approved:
+            raise serializers.ValidationError("Selected coach is not yet approved.")
+        return value
+
+
+class CoachAvailabilitySerializer(serializers.ModelSerializer):
+    coach_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model  = CoachAvailability
+        fields = ("id", "coach", "coach_name", "start_time", "end_time", "is_booked", "created_at")
+        read_only_fields = ("id", "coach", "is_booked", "created_at")
+
+    def get_coach_name(self, obj):
+        return f"{obj.coach.first_name} {obj.coach.last_name}".strip()
+
+    def validate(self, attrs):
+        start = attrs.get("start_time")
+        end   = attrs.get("end_time")
+        if start and end and end <= start:
+            raise serializers.ValidationError({"end_time": "end_time must be after start_time."})
+        return attrs
+
+
+class BookingRequestSerializer(serializers.ModelSerializer):
+    """Read serializer — full detail."""
+    coach_name   = serializers.SerializerMethodField(read_only=True)
+    student_name = serializers.SerializerMethodField(read_only=True)
+    slot_start   = serializers.DateTimeField(source="slot.start_time", read_only=True)
+    slot_end     = serializers.DateTimeField(source="slot.end_time",   read_only=True)
+
+    class Meta:
+        model  = BookingRequest
+        fields = (
+            "id", "student", "student_name",
+            "coach", "coach_name",
+            "slot", "slot_start", "slot_end",
+            "status", "rejection_note",
+            "created_at", "updated_at"
+        )
+        read_only_fields = fields
+
+    def get_coach_name(self, obj):
+        return f"{obj.coach.first_name} {obj.coach.last_name}".strip()
+
+    def get_student_name(self, obj):
+        return f"{obj.student.first_name} {obj.student.last_name}".strip()
+
+
+class BookingRequestCreateSerializer(serializers.ModelSerializer):
+    """Write serializer — student only provides the slot id."""
+    class Meta:
+        model  = BookingRequest
+        fields = ("id", "slot")
+        read_only_fields = ("id",)
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        student = request.user
+        slot    = attrs.get("slot")
+
+        try:
+            assignment = CoachStudentAssignment.objects.get(student=student)
+        except CoachStudentAssignment.DoesNotExist:
+            raise serializers.ValidationError(
+                "You have not selected a coach yet."
+            )
+
+        if slot.coach_id != assignment.coach_id:
+            raise serializers.ValidationError(
+                {"slot": "This slot does not belong to your assigned coach."}
+            )
+        if slot.is_booked:
+            raise serializers.ValidationError(
+                {"slot": "This time slot is already booked."}
+            )
+        return attrs
+
+    def create(self, validated_data):
+        request    = self.context.get("request")
+        student    = request.user
+        assignment = CoachStudentAssignment.objects.get(student=student)
+        return BookingRequest.objects.create(
+            student=student,
+            coach=assignment.coach,
+            **validated_data
+        )
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model  = Notification
+        fields = (
+            "id", "notification_type", "message",
+            "is_read", "booking", "created_at"
+        )
+        read_only_fields = fields
