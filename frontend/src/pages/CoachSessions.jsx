@@ -185,7 +185,11 @@ function CoachSessions() {
     }
   };
 
-  const filteredBookings = bookings.filter((b) => statusFilter === 'ALL' || b.status === statusFilter);
+  const activeBookings = bookings.filter((b) => !['CANCELLED', 'REJECTED'].includes(b.status));
+  const archivedBookings = bookings.filter((b) => ['CANCELLED', 'REJECTED'].includes(b.status));
+  const [showArchived, setShowArchived] = useState(false);
+
+  const filteredActive = activeBookings.filter((b) => statusFilter === 'ALL' || b.status === statusFilter);
 
   return (
     <div style={{ padding: '2rem 2.5rem', fontFamily: 'var(--cu-font-body)' }}>
@@ -276,7 +280,7 @@ function CoachSessions() {
               Booking Requests
             </h5>
             <div className='d-flex gap-2'>
-              {['ALL', 'PENDING', 'APPROVED', 'PENDING_ADMIN', 'REJECTED', 'CANCELLED'].map((s) => (
+              {['ALL', 'PENDING', 'APPROVED', 'PENDING_ADMIN'].map((s) => (
                 <button
                   key={s}
                   onClick={() => setStatusFilter(s)}
@@ -301,11 +305,11 @@ function CoachSessions() {
               ))}
             </div>
           </div>
-          {filteredBookings.length === 0 ? (
+          {filteredActive.length === 0 ? (
             <p style={{ color: '#aaa', fontSize: '0.88rem' }}>No bookings found.</p>
           ) : (
             <div className='d-flex flex-column gap-3'>
-              {filteredBookings.map((b) => (
+              {filteredActive.map((b) => (
                 <div
                   key={b.id}
                   style={{
@@ -363,6 +367,59 @@ function CoachSessions() {
           )}
         </Card.Body>
       </Card>
+
+      {/* Archived bookings toggle */}
+      {archivedBookings.length > 0 && (
+        <div style={{ marginTop: '0.75rem' }}>
+          <button
+            onClick={() => setShowArchived((v) => !v)}
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '0.82rem',
+              color: '#912338',
+              cursor: 'pointer',
+              padding: 0,
+              fontWeight: 500,
+            }}
+          >
+            {showArchived ? '▾' : '▸'} {showArchived ? 'Hide' : 'Show'} cancelled & rejected ({archivedBookings.length})
+          </button>
+          {showArchived && (
+            <div className='d-flex flex-column gap-2 mt-2'>
+              {archivedBookings.map((b) => (
+                <div
+                  key={b.id}
+                  style={{
+                    padding: '0.75rem 1rem',
+                    background: '#fafafa',
+                    borderRadius: '8px',
+                    border: '1px solid #f0eaea',
+                    opacity: 0.75,
+                  }}
+                >
+                  <div className='d-flex justify-content-between align-items-start'>
+                    <div>
+                      <p style={{ fontWeight: 500, marginBottom: '0.2rem', fontSize: '0.88rem', color: '#555' }}>
+                        {b.student_name}
+                      </p>
+                      <p style={{ fontSize: '0.78rem', color: '#aaa', marginBottom: 0 }}>
+                        {formatDT(b.slot_start)} → {formatTimeOnly(b.slot_end)}
+                      </p>
+                      {b.rejection_note && (
+                        <p style={{ fontSize: '0.75rem', color: '#912338', marginTop: '0.25rem', marginBottom: 0 }}>
+                          Reason: {b.rejection_note}
+                        </p>
+                      )}
+                    </div>
+                    <Badge bg={statusColor[b.status]}>{statusLabel[b.status]}</Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add Slot Modal */}
       <Modal show={showAddSlot} onHide={() => setShowAddSlot(false)} centered>
