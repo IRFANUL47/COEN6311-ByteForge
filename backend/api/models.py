@@ -264,6 +264,217 @@ class WorkoutSession(models.Model):
 
     def __str__(self):
         return f"{self.student.username} — {self.workout_day} [{self.status}]"
+    
+# ──────────────────────────────────────────────
+# COACH STUDENT ASSIGNMENT
+# Student selects a coach and is permanently assigned
+# ──────────────────────────────────────────────
+class CoachStudentAssignment(models.Model):
+    coach   = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="assigned_students"
+    )
+    student = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="assigned_coach"
+    )
+    assigned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-assigned_at"]
+
+    def __str__(self):
+        return f"{self.student.username} → {self.coach.username}"
+
+    def clean(self):
+        coach_role   = getattr(self.coach,   "role", None)
+        student_role = getattr(self.student, "role", None)
+
+        if coach_role is not None and coach_role != CustomUser.Role.COACH:
+            raise ValidationError({"coach": "Selected user is not a coach."})
+        if student_role is not None and student_role != CustomUser.Role.STUDENT:
+            raise ValidationError({"student": "Selected user is not a student."})
+        if self.coach_id and self.student_id and self.coach_id == self.student_id:
+            raise ValidationError("Coach and student must be different users.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+# ──────────────────────────────────────────────
+# COACH AVAILABILITY
+# Coach defines available time slots for booking
+# ──────────────────────────────────────────────
+class CoachAvailability(models.Model):
+    coach      = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="availability_slots"
+    )
+    start_time = models.DateTimeField()
+    end_time   = models.DateTimeField()
+    is_booked  = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["start_time"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["coach", "start_time"],
+                name="unique_coach_slot"
+            )
+        ]
+
+    def __str__(self):
+        status = "Booked" if self.is_booked else "Available"
+        return f"{self.coach.username} | {self.start_time} → {self.end_time} [{status}]"
+
+    def clean(self):
+        coach_role = getattr(self.coach, "role", None)
+        if coach_role is not None and coach_role != CustomUser.Role.COACH:
+            raise ValidationError({"coach": "Only coaches can define availability slots."})
+        if self.start_time and self.end_time and self.end_time <= self.start_time:
+            raise ValidationError({"end_time": "end_time must be after start_time."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+# ──────────────────────────────────────────────
+# BOOKING REQUEST
+# Student books one of their assigned coach's slots
+# ──────────────────────────────────────────────
+class BookingRequest(models.Model):
+    class Status(models.TextChoices):
+        PENDING       = "PENDING",       "Pending"
+        APPROVED      = "APPROVED",      "Approved"
+        PENDING_ADMIN = "PENDING_ADMIN", "Pending Admin Review"
+        REJECTED      = "REJECTED",      "Rejected"
+        CANCELLED     = "CANCELLED",     "Cancelled"
+
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="booking_requests"
+    )
+    coach = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="received_bookings"
+    )
+    slot = models.OneToOneField(
+        CoachAvailability,
+        on_delete=models.CASCADE,
+        related_name="booking"
+    )
+    status         = models.CharField(
+        max_length=15,
+        choices=Status.choices,
+        default=Status.PENDING
+    )
+    rejection_note = models.TextField(
+        blank=True,
+        help_text="Coach fills this when requesting rejection"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["student"]),
+            models.Index(fields=["coach"]),
+            models.Index(fields=["status"]),
+        ]
+
+    def __str__(self):
+        return f"{self.student.username} → {self.coach.username} [{self.status}]"
+
+    def clean(self):
+        if self.coach_id and self.student_id and self.coach_id == self.student_id:
+            raise ValidationError("Coach and student must be different users.")
+
+        coach_role   = getattr(self.coach,   "role", None)
+        student_role = getattr(self.student, "role", None)
+
+        if coach_role is not None and coach_role != CustomUser.Role.COACH:
+            raise ValidationError({"coach": "Selected user is not a coach."})
+        if student_role is not None and student_role != CustomUser.Role.STUDENT:
+            raise ValidationError({"student": "Selected user is not a student."})
+
+        # Student can only book their assigned coach
+        try:
+            assignment = CoachStudentAssignment.objects.get(student=self.student)
+            if assignment.coach_id != self.coach_id:
+                raise ValidationError({
+                    "coach": "You can only book sessions with your assigned coach."
+                })
+        except CoachStudentAssignment.DoesNotExist:
+            raise ValidationError({
+                "student": "You have not been assigned a coach yet."
+            })
+
+        # Slot must belong to the selected coach
+        if self.slot and self.slot.coach_id != self.coach_id:
+            raise ValidationError({"slot": "This slot does not belong to your assigned coach."})
+
+        # Slot must not already be booked
+        if self.slot and self.slot.is_booked and self._state.adding:
+            raise ValidationError({"slot": "This time slot is already booked."})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def is_editable_by(self, user):
+        if user is None:
+            return False
+        if getattr(user, "is_superuser", False):
+            return True
+        return user.pk == self.coach_id
+
+
+# ──────────────────────────────────────────────
+# NOTIFICATION
+# In-app bell notifications for coach and student
+# ──────────────────────────────────────────────
+class Notification(models.Model):
+    class NotificationType(models.TextChoices):
+        BOOKING_REQUEST      = "BOOKING_REQUEST",      "New Booking Request"
+        BOOKING_APPROVED     = "BOOKING_APPROVED",     "Booking Approved"
+        BOOKING_REJECTED     = "BOOKING_REJECTED",     "Booking Rejected"
+        REJECTION_APPROVED   = "REJECTION_APPROVED",   "Rejection Approved by Admin"
+        REJECTION_DENIED     = "REJECTION_DENIED",     "Rejection Denied by Admin"
+
+    recipient        = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications"
+    )
+    notification_type = models.CharField(
+        max_length=30,
+        choices=NotificationType.choices
+    )
+    message   = models.TextField()
+    is_read   = models.BooleanField(default=False)
+    booking   = models.ForeignKey(
+        BookingRequest,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+        null=True,
+        blank=True
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"→ {self.recipient.username} [{self.notification_type}]"
 
 class ChatRating(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chat_ratings')
@@ -277,3 +488,4 @@ class ChatRating(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.rating} - {self.created_at}"
+

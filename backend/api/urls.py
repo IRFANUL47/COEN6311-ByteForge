@@ -35,4 +35,30 @@ urlpatterns = [
     path("workout-sessions/<int:pk>/complete/", views.workoutsession_complete, name="workoutsession-complete"),
     path("chat/", views.chat, name="chat"),
     path("chat/rate/", views.rate_chat, name="chat-rate"),
+
+    path("coaches/",                              views.coach_list,               name="coach-list"),
+  
+    path("assignments/my/",                       views.assignment_detail,         name="assignment-detail"),
+    path("assignments/select/",                   views.assignment_select_coach,   name="assignment-select"),
+    path("assignments/",                          views.assignment_list_admin,     name="assignment-list-admin"),
+    path("assignments/<int:pk>/reassign/",        views.assignment_reassign,       name="assignment-reassign"),
+  
+    path("availability/",                         views.availability_list,         name="availability-list"),
+    path("availability/create/",                  views.availability_create,       name="availability-create"),
+    path("availability/<int:pk>/delete/",         views.availability_delete,       name="availability-delete"),
+  
+    path("bookings/",                             views.booking_list,              name="booking-list"),
+    path("bookings/create/",                      views.booking_create,            name="booking-create"),
+    path("bookings/<int:pk>/",                    views.booking_detail,            name="booking-detail"),
+    path("bookings/<int:pk>/approve/",            views.booking_approve,           name="booking-approve"),
+    path("bookings/<int:pk>/request-rejection/",  views.booking_request_rejection, name="booking-request-rejection"),
+    path("bookings/<int:pk>/admin-approve-rejection/", views.admin_approve_rejection, name="admin-approve-rejection"),
+    path("bookings/<int:pk>/admin-deny-rejection/",    views.admin_deny_rejection,    name="admin-deny-rejection"),
+    path("bookings/<int:pk>/cancel/",             views.booking_cancel,            name="booking-cancel"),
+  
+    path("notifications/",                        views.notification_list,         name="notification-list"),
+    path("notifications/unread-count/",           views.notification_unread_count, name="notification-unread-count"),
+    path("notifications/<int:pk>/read/",          views.notification_mark_read,    name="notification-mark-read"),
+    path("notifications/read-all/",               views.notification_mark_all_read,name="notification-read-all"),
+
 ]
