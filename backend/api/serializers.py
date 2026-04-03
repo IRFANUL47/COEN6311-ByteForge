@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
 from rest_framework import serializers
 from .models import (
     CustomUser, DietaryRestriction, UserDietaryRestriction,
@@ -434,6 +435,14 @@ class CoachAvailabilitySerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         start = attrs.get("start_time")
         end   = attrs.get("end_time")
+
+        # ── NEW: Deny past slots ─────────────────────────────────
+        if start and start <= timezone.now():
+            raise serializers.ValidationError(
+                {"start_time": "Availability slots must be in the future."}
+            )
+        # ─────────────────────────────────────────────────────────
+
         if start and end and end <= start:
             raise serializers.ValidationError({"end_time": "end_time must be after start_time."})
         return attrs

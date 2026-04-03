@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -195,6 +196,17 @@ def availability_create(request):
             {"detail": "Only coaches can create availability slots."},
             status=status.HTTP_403_FORBIDDEN
         )
+    # ── NEW: Deny slots in the past ──────────────────────────────
+    start_time = request.data.get("start_time")
+    if start_time:
+        from django.utils.dateparse import parse_datetime
+        parsed = parse_datetime(str(start_time))
+        if parsed and parsed <= timezone.now():
+            return Response(
+                {"detail": "Availability slots must be in the future."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+    # ─────────────────────────────────────────────────────────────
     serializer = CoachAvailabilitySerializer(
         data=request.data,
         context={"request": request}
@@ -434,25 +446,34 @@ def admin_approve_rejection(request, pk):
             {"detail": f"This booking is not pending admin review."},
             status=status.HTTP_400_BAD_REQUEST
         )
+    # ── NEW: Delete the slot so it disappears entirely ───────────
+    slot = booking.slot
+    rejection_note = booking.rejection_note  # ← save this first
+    coach_name = f"{booking.coach.first_name} {booking.coach.last_name}"
+    slot_time = booking.slot.start_time.strftime('%b %d, %Y at %I:%M %p')
+    student = booking.student
 
     booking.status = BookingRequest.Status.REJECTED
     booking.save()
+    slot.delete()  # cascades — booking is also deleted after this
+    # ─────────────────────────────────────────────────────────────
 
     # In-app notification to student with rejection reason
     create_notification(
-        recipient=booking.student,
+        recipient=student,
         notification_type=Notification.NotificationType.BOOKING_REJECTED,
         message=(
-            f"Your booking with Coach "
-            f"{booking.coach.first_name} {booking.coach.last_name} "
-            f"on {booking.slot.start_time.strftime('%b %d, %Y at %I:%M %p')} "
-            f"has been rejected. Reason: {booking.rejection_note}"
+            f"Your booking with Coach {coach_name} "
+            f"on {slot_time} "
+            f"has been rejected. Reason: {rejection_note}"
         ),
-        booking=booking,
+        booking=None, # booking will be deleted so don't reference it
     )
-
-    serializer = BookingRequestSerializer(booking)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(
+        {"detail": "Rejection approved. Slot and booking have been removed."},
+        status=status.HTTP_200_OK
+    
+    )
 
 
 @api_view(["PATCH"])
@@ -517,9 +538,12 @@ def booking_cancel(request, pk):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    booking.status = BookingRequest.Status.CANCELLED
+    # ── NEW: Free up the slot instead of deleting it ─────────────
     booking.slot.is_booked = False
     booking.slot.save()
+    # ─────────────────────────────────────────────────────────────
+
+    booking.status = BookingRequest.Status.CANCELLED
     booking.save()
 
     serializer = BookingRequestSerializer(booking)
