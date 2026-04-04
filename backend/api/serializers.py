@@ -192,6 +192,17 @@ class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
         if student and getattr(student, "role", None) != User.Role.STUDENT:
             raise serializers.ValidationError({"student": "The selected user is not a student."})
 
+        # ── Only allow coach to assign plans to their own students ──
+        if student:
+            from .models import CoachStudentAssignment
+            is_assigned = CoachStudentAssignment.objects.filter(
+                coach=user, student=student
+            ).exists()
+            if not is_assigned:
+                raise serializers.ValidationError(
+                    {"student": "You can only assign plans to students assigned to you."}
+                )
+        
         start = attrs.get("start_date")
         end = attrs.get("end_date")
         if start and end and end < start:
@@ -311,7 +322,7 @@ class WorkoutPlanCreateUpdateSerializer(serializers.ModelSerializer):
             self.fields["student"].queryset = User.objects.filter(role=User.Role.STUDENT)
         except Exception:
             self.fields["student"].queryset = User.objects.all()
-
+    
     def validate(self, attrs):
         request = self.context.get("request")
         if request is None:
@@ -325,6 +336,17 @@ class WorkoutPlanCreateUpdateSerializer(serializers.ModelSerializer):
         if student and getattr(student, "role", None) != User.Role.STUDENT:
             raise serializers.ValidationError({"student": "The selected user is not a student."})
 
+        # ── Only allow coach to assign plans to their own students ──
+        if student:
+            from .models import CoachStudentAssignment
+            is_assigned = CoachStudentAssignment.objects.filter(
+                coach=user, student=student
+            ).exists()
+            if not is_assigned:
+                raise serializers.ValidationError(
+                    {"student": "You can only assign plans to students assigned to you."}
+                )
+        
         start = attrs.get("start_date")
         end   = attrs.get("end_date")
         if start and end and end < start:
