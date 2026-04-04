@@ -600,3 +600,39 @@ class MessageSerializer(serializers.ModelSerializer):
 
         message = Message.objects.create(conversation=conversation, sender=user, content=validated_data["content"])
         return message
+
+
+class ConversationSerializer(serializers.ModelSerializer):
+    other_participant = serializers.SerializerMethodField()
+    last_message_preview = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Conversation
+        fields = ("id", "coach", "student", "other_participant", "last_message_at", "created_at", "last_message_preview", "unread_count")
+        read_only_fields = ("id", "coach", "student", "last_message_at", "created_at", "last_message_preview", "unread_count")
+
+    def get_other_participant(self, obj):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        other = obj.student if user and user.pk == obj.coach_id else obj.coach
+        return {"id": other.pk, "name": f"{other.first_name} {other.last_name}".strip(), "role": getattr(other, "role", None)}
+
+    def get_last_message_preview(self, obj):
+        # Prefer pre-fetched attribute if view annotated it to avoid extra query
+        preview = getattr(obj, "last_message_preview", None)
+        if preview is not None:
+            return preview
+        last = obj.messages.order_by("-created_at").first()
+        return (last.content[:200] + "...") if last and len(last.content) > 200 else (last.content if last else "")
+
+    def get_unread_count(self, obj):
+        # Prefer annotated value if present
+        cnt = getattr(obj, "unread_count", None)
+        if cnt is not None:
+            return int(cnt)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user:
+            return 0
+        return obj.messages.filter(read=False).exclude(sender_id=user.pk).count()

@@ -6,4 +6,4 @@ from .dietaryrestriction_views import my_dietary_restrictions, add_dietary_restr
 from .workoutplan_views import (workoutplan_list, workoutplan_create, workoutplan_detail, workoutplan_update, workoutplan_delete, workoutsession_complete,)
 from .chat_views import chat, rate_chat 
 from .booking_views import (coach_list, assignment_select_coach, assignment_detail, assignment_list_admin, assignment_reassign, availability_list, availability_create, availability_delete, booking_list, booking_create, booking_detail, booking_approve, booking_request_rejection, admin_approve_rejection, admin_deny_rejection, booking_cancel, notification_list, notification_unread_count, notification_mark_read, notification_mark_all_read,)
-from  .message_views import create_message
+from  .message_views import create_message, conversations_list, conversation_messages, conversation_mark_read

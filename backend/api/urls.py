@@ -62,5 +62,8 @@ urlpatterns = [
     path("notifications/read-all/",               views.notification_mark_all_read,name="notification-read-all"),
 
     path("messages/", views.create_message, name="messages-create"),
+    path("conversations/", views.conversations_list, name="conversations-list"),
+    path("conversations/<int:conversation_id>/messages/", views.conversation_messages, name ="conversation-messages"),
+    path("conversations/<int:conversation_id>/messages/read/", views.conversation_mark_read, name="conversation-mark-read"),
 
 ]
