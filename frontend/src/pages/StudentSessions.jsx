@@ -20,7 +20,7 @@ const statusLabel = {
 };
 
 const ACTIVE_STATUSES = ['PENDING', 'APPROVED', 'PENDING_ADMIN'];
-const ARCHIVED_STATUSES = ['REJECTED', 'CANCELLED'];
+const CANCELLED_STATUSES = ['CANCELLED'];
 
 const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -141,6 +141,7 @@ function StudentSessions() {
       fetchSlots();
       fetchBookings();
     } catch (err) {
+      setShowSlotsModal(false);
       setError(err.response?.data?.detail || JSON.stringify(err.response?.data) || 'Failed to create booking.');
     } finally {
       setBookingLoading(false);
@@ -160,7 +161,9 @@ function StudentSessions() {
   };
 
   const activeBookings = bookings.filter((b) => ACTIVE_STATUSES.includes(b.status));
-  const archivedBookings = bookings.filter((b) => ARCHIVED_STATUSES.includes(b.status));
+  const cancelledBookings = bookings
+    .filter((b) => CANCELLED_STATUSES.includes(b.status))
+    .sort((a, b) => new Date(a.slot_start) - new Date(b.slot_start));
 
   return (
     <div style={{ padding: '2rem 2.5rem', fontFamily: 'var(--cu-font-body)' }}>
@@ -267,7 +270,7 @@ function StudentSessions() {
       </Card>
 
       {/* Archived toggle */}
-      {archivedBookings.length > 0 && (
+      {cancelledBookings.length > 0 && (
         <div style={{ marginBottom: '1.5rem' }}>
           <button
             onClick={() => setShowArchived((v) => !v)}
@@ -281,12 +284,12 @@ function StudentSessions() {
               fontWeight: 500,
             }}
           >
-            {showArchived ? '▾' : '▸'} {showArchived ? 'Hide' : 'Show'} cancelled & rejected ({archivedBookings.length})
+            {showArchived ? '▾' : '▸'} {showArchived ? 'Hide' : 'Show'} cancelled bookings ({cancelledBookings.length})
           </button>
 
           {showArchived && (
             <div className='d-flex flex-column gap-2 mt-2'>
-              {archivedBookings.map((b) => (
+              {cancelledBookings.map((b) => (
                 <div
                   key={b.id}
                   style={{
@@ -303,11 +306,6 @@ function StudentSessions() {
                         {formatDT(b.slot_start)} → {formatTimeOnly(b.slot_end)}
                       </p>
                       <p style={{ fontSize: '0.78rem', color: '#aaa', marginBottom: 0 }}>Coach: {b.coach_name}</p>
-                      {b.status === 'REJECTED' && b.rejection_note && (
-                        <p style={{ fontSize: '0.75rem', color: '#912338', marginTop: '0.25rem', marginBottom: 0 }}>
-                          Reason: {b.rejection_note}
-                        </p>
-                      )}
                     </div>
                     <Badge bg={statusColor[b.status]}>{statusLabel[b.status]}</Badge>
                   </div>

@@ -323,6 +323,28 @@ def booking_create(request):
             {"detail": "Only students can create booking requests."},
             status=status.HTTP_403_FORBIDDEN
         )
+
+    # ── Handle cancelled bookings on this slot ───────────────────
+    # The slot has a OneToOneField to BookingRequest, so a leftover
+    # CANCELLED record blocks new bookings. We either block the same
+    # student from rebooking, or clear the old record for a new student.
+    slot_id = request.data.get("slot")
+    if slot_id:
+        existing_cancelled = BookingRequest.objects.filter(
+            slot_id=slot_id,
+            status=BookingRequest.Status.CANCELLED,
+        ).first()
+        if existing_cancelled:
+            if existing_cancelled.student_id == user.pk:
+                # Same student — block them from rebooking
+                return Response(
+                    {"detail": "You already cancelled a booking for this slot and cannot rebook it."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            else:
+                # Different student — delete old cancelled record so slot is bookable
+                existing_cancelled.delete()
+    # ─────────────────────────────────────────────────────────────
     serializer = BookingRequestCreateSerializer(
         data=request.data,
         context={"request": request}
@@ -509,7 +531,6 @@ def admin_approve_rejection(request, pk):
     return Response(
         {"detail": "Rejection approved. Slot and booking have been removed."},
         status=status.HTTP_200_OK
-    
     )
 
 
@@ -575,16 +596,15 @@ def booking_cancel(request, pk):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # ── NEW: Free up the slot instead of deleting it ─────────────
+    # ── NEW: Free up the slot; keep booking record so we can block
+    # the same student from rebooking this slot ───────────────────
     booking.slot.is_booked = False
     booking.slot.save()
-    # ─────────────────────────────────────────────────────────────
-
     booking.status = BookingRequest.Status.CANCELLED
     booking.save()
+    # ─────────────────────────────────────────────────────────────
 
-    serializer = BookingRequestSerializer(booking)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response({"detail": "Booking cancelled."}, status=status.HTTP_200_OK)
 
 
 # ── NOTIFICATIONS ──────────────────────────────────────────────────────────────

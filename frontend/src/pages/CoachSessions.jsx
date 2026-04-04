@@ -185,7 +185,9 @@ function CoachSessions() {
   };
 
   const activeBookings = bookings.filter((b) => !['CANCELLED', 'REJECTED'].includes(b.status));
-  const archivedBookings = bookings.filter((b) => ['CANCELLED', 'REJECTED'].includes(b.status));
+  const archivedBookings = bookings
+    .filter((b) => b.status === 'CANCELLED')
+    .sort((a, b) => new Date(a.slot_start) - new Date(b.slot_start));
   const [showArchived, setShowArchived] = useState(false);
 
   const filteredActive = activeBookings.filter((b) => statusFilter === 'ALL' || b.status === statusFilter);
@@ -382,7 +384,7 @@ function CoachSessions() {
               fontWeight: 500,
             }}
           >
-            {showArchived ? '▾' : '▸'} {showArchived ? 'Hide' : 'Show'} cancelled & rejected ({archivedBookings.length})
+            {showArchived ? '▾' : '▸'} {showArchived ? 'Hide' : 'Show'} cancelled bookings ({archivedBookings.length})
           </button>
           {showArchived && (
             <div className='d-flex flex-column gap-2 mt-2'>
@@ -468,6 +470,7 @@ function CoachSessions() {
               />
             </Form.Group>
             <br />
+
             <Button type='submit' className='cu-btn-submit w-100' disabled={slotLoading}>
               {slotLoading ? 'Adding...' : 'Add Slot'}
             </Button>

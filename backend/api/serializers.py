@@ -514,10 +514,19 @@ class BookingRequestCreateSerializer(serializers.ModelSerializer):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    slot_start = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model  = Notification
         fields = (
             "id", "notification_type", "message",
-            "is_read", "booking", "created_at"
+            "is_read", "booking", "slot_start", "created_at"
         )
         read_only_fields = fields
+
+    def get_slot_start(self, obj):
+        # booking may be null (e.g. after slot deletion) — guard safely
+        try:
+            return obj.booking.slot.start_time.isoformat() if obj.booking and obj.booking.slot else None
+        except Exception:
+            return None
