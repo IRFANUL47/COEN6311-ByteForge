@@ -34,6 +34,19 @@ def create_notification(recipient, notification_type, message, booking=None):
     )
 
 
+def _purge_old_slots():
+    """
+    Delete availability slots (and their bookings via CASCADE) whose
+    start_time was more than 1 day ago. Slots that just passed are kept
+    so recent history isn't immediately wiped.
+    Called at the start of availability_list so lists stay clean
+    without needing a background task.
+    """
+    from datetime import timedelta
+    cutoff = timezone.now() - timedelta(days=1)
+    CoachAvailability.objects.filter(start_time__lt=cutoff).delete()
+
+
 # ── COACH LIST ─────────────────────────────────────────────────────────────────
 
 @api_view(["GET"])
@@ -162,6 +175,7 @@ def availability_list(request):
     Coach sees all their own slots.
     Student sees only their assigned coach's unbooked slots.
     """
+    _purge_old_slots()
     user = request.user
     if getattr(user, "role", None) == CustomUser.Role.COACH:
         qs = CoachAvailability.objects.filter(coach=user)
@@ -197,15 +211,21 @@ def availability_create(request):
             status=status.HTTP_403_FORBIDDEN
         )
     # ── NEW: Deny slots in the past ──────────────────────────────
-    start_time = request.data.get("start_time")
-    if start_time:
-        from django.utils.dateparse import parse_datetime
-        parsed = parse_datetime(str(start_time))
-        if parsed and parsed <= timezone.now():
-            return Response(
-                {"detail": "Availability slots must be in the future."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+    start_time_raw = request.data.get("start_time")
+    if start_time_raw:
+        from dateutil.parser import parse as parse_dt
+        try:
+            parsed = parse_dt(str(start_time_raw))
+            if parsed.tzinfo is None:
+                from django.utils.timezone import make_aware
+                parsed = make_aware(parsed)
+            if parsed <= timezone.now():
+                return Response(
+                    {"detail": "Availability slots must be in the future."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception as ex:
+            pass  # let serializer validation catch malformed datetimes
     # ─────────────────────────────────────────────────────────────
     serializer = CoachAvailabilitySerializer(
         data=request.data,
@@ -226,6 +246,23 @@ def availability_create(request):
                     status=status.HTTP_400_BAD_REQUEST
                 )
             return Response(messages, status=status.HTTP_400_BAD_REQUEST)
+    # ── Flatten serializer errors into a single detail message ───
+    errors = serializer.errors
+    if "start_time" in errors:
+        return Response(
+            {"detail": errors["start_time"][0]},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if "end_time" in errors:
+        return Response(
+            {"detail": errors["end_time"][0]},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if "non_field_errors" in errors:
+        return Response(
+            {"detail": errors["non_field_errors"][0]},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 

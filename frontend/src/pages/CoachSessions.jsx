@@ -132,8 +132,7 @@ function CoachSessions() {
       const data = err.response?.data;
       if (
         data?.__all__?.[0]?.toLowerCase().includes('already exists') ||
-        data?.detail?.toLowerCase().includes('already exists') ||
-        err.response?.status === 400
+        data?.detail?.toLowerCase().includes('already exists')
       ) {
         setSlotError('You already have a slot starting at that time. Please choose a different start time.');
       } else {
