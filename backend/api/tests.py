@@ -18,10 +18,7 @@ class MessagingConnectivityTests(TestCase):
         self.other_student = User.objects.create_user(username="student2", password="pw", role=User.Role.STUDENT, concordia_id="S002", is_approved=True)
 
         # Endpoint name - ensure this matches your urls.py
-        try:
-            self.messages_url = reverse("messages-create")
-        except Exception:
-            self.messages_url = "/api/messages/"
+        self.messages_url = reverse("messages-create")
 
     def test_student_can_message_assigned_coach(self):
         # create permanent assignment
