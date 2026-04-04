@@ -512,6 +512,16 @@ class Message(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["conversation", "created_at"]),
+        ]
 
-    def __str__(self):
-        return f"{self.sender.username}: {self.content[:40]}"
+    def clean(self):
+        # Ensure sender is participant in conversation
+        if self.sender_id not in (self.conversation.coach_id, self.conversation.student_id):
+            raise ValidationError("Message sender must be a participant in the conversation.")
+
+    def save(self, *args, **kwargs):
+        # Validate before saving
+        self.full_clean()
+        super().save(*args, **kwargs)

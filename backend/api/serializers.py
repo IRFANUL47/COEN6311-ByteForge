@@ -2,14 +2,17 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from .models import (
-    CustomUser, DietaryRestriction, UserDietaryRestriction,
+CustomUser, DietaryRestriction, UserDietaryRestriction,
     NutritionPlan, WorkoutPlan, WorkoutDay, Exercise, WorkoutSession,
     CoachStudentAssignment, CoachAvailability, BookingRequest, Notification,
     Message, Conversation
 )
+from .utils.messaging import get_or_create_conversation_safe
+from django.conf import settings
 
 User = get_user_model()
 
+MAX_MESSAGE_LENGTH = getattr(settings, "MESSAGE_MAX_LENGTH", 5000)
 
 class RegisterSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=150)
@@ -208,9 +211,6 @@ class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         return super().update(instance, validated_data)
     
-# ─────────────────────────────────────────────
-# WORKOUT SERIALIZERS
-# ─────────────────────────────────────────────
 
 class ExerciseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -370,7 +370,6 @@ class WorkoutPlanCreateUpdateSerializer(serializers.ModelSerializer):
 
         return instance
     
-# ── BOOKING SERIALIZERS ────────────────────────────────────────────────────────
 
 class CoachListSerializer(serializers.ModelSerializer):
     """Shows coaches to students when browsing — includes available slot count."""
@@ -521,13 +520,21 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = ("id", "conversation", "sender", "sender_name", "content", "created_at", "read")
-        read_only_fields = ("id", "sender", "created_at", "sender_name")
+        read_only_fields = ("id", "sender", "created_at", "sender_name", "conversation")
 
     def get_sender_name(self, obj):
         return f"{obj.sender.first_name} {obj.sender.last_name}".strip()
 
+    def validate_content(self, value):
+        text = (value or "").strip()
+        if not text:
+            raise serializers.ValidationError("Message content cannot be empty.")
+        if len(text) > MAX_MESSAGE_LENGTH:
+            raise serializers.ValidationError(f"Message content exceeds {MAX_MESSAGE_LENGTH} characters.")
+        return text
+
     def validate(self, attrs):
-        # recipient_id comes from incoming payload (initial_data)
+        # recipient_id comes from payload (initial_data) or context
         recipient_id = self.initial_data.get("recipient_id") or self.context.get("recipient_id")
         request = self.context.get("request")
         user = request.user if request else None
@@ -551,7 +558,7 @@ class MessageSerializer(serializers.ModelSerializer):
         except User.DoesNotExist:
             raise serializers.ValidationError({"recipient_id": "Recipient not found."})
 
-        # Student -> Coach: student must be assigned to that coach via CoachStudentAssignment
+        # Student -> Coach: student must be assigned to that coach
         if user.role == User.Role.STUDENT:
             if recipient.role != User.Role.COACH:
                 raise serializers.ValidationError({"recipient_id": "Recipient must be a coach."})
@@ -572,18 +579,15 @@ class MessageSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError({"non_field_errors": "Only students and coaches can send messages."})
 
-        # Save recipient in context for create() to use
+        # Save the resolved recipient for create()
         self.context["validated_recipient"] = recipient
         return attrs
 
     def create(self, validated_data):
         request = self.context.get("request")
-        user = request.user if request else None
+        user = request.user
         recipient = self.context.get("validated_recipient")
-        if user is None or recipient is None:
-            raise serializers.ValidationError("Authenticated user and recipient are required to create a message.")
-
-        # Determine coach and student
+        # Determine coach & student
         if user.role == User.Role.COACH:
             coach = user
             student = recipient
@@ -591,8 +595,8 @@ class MessageSerializer(serializers.ModelSerializer):
             coach = recipient
             student = user
 
-        # Get or create Conversation (unique per coach/student)
-        conversation, _ = Conversation.objects.get_or_create(coach=coach, student=student)
+        # Use safe helper to avoid race on conversation creation
+        conversation, _ = get_or_create_conversation_safe(Conversation, coach, student)
 
         message = Message.objects.create(conversation=conversation, sender=user, content=validated_data["content"])
         return message
