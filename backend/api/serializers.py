@@ -4,7 +4,8 @@ from rest_framework import serializers
 from .models import (
     CustomUser, DietaryRestriction, UserDietaryRestriction,
     NutritionPlan, WorkoutPlan, WorkoutDay, Exercise, WorkoutSession,
-    CoachStudentAssignment, CoachAvailability, BookingRequest, Notification
+    CoachStudentAssignment, CoachAvailability, BookingRequest, Notification,
+    Message, Conversation
 )
 
 User = get_user_model()
@@ -512,3 +513,86 @@ class NotificationSerializer(serializers.ModelSerializer):
             "is_read", "booking", "created_at"
         )
         read_only_fields = fields
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Message
+        fields = ("id", "conversation", "sender", "sender_name", "content", "created_at", "read")
+        read_only_fields = ("id", "sender", "created_at", "sender_name")
+
+    def get_sender_name(self, obj):
+        return f"{obj.sender.first_name} {obj.sender.last_name}".strip()
+
+    def validate(self, attrs):
+        # recipient_id comes from incoming payload (initial_data)
+        recipient_id = self.initial_data.get("recipient_id") or self.context.get("recipient_id")
+        request = self.context.get("request")
+        user = request.user if request else None
+
+        if user is None or not getattr(user, "is_authenticated", False):
+            raise serializers.ValidationError({"non_field_errors": "Authentication is required."})
+
+        if not recipient_id:
+            raise serializers.ValidationError({"recipient_id": "recipient_id is required."})
+
+        try:
+            recipient_id = int(recipient_id)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError({"recipient_id": "recipient_id must be an integer."})
+
+        if recipient_id == user.pk:
+            raise serializers.ValidationError({"recipient_id": "Cannot send a message to yourself."})
+
+        try:
+            recipient = User.objects.get(pk=recipient_id)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"recipient_id": "Recipient not found."})
+
+        # Student -> Coach: student must be assigned to that coach via CoachStudentAssignment
+        if user.role == User.Role.STUDENT:
+            if recipient.role != User.Role.COACH:
+                raise serializers.ValidationError({"recipient_id": "Recipient must be a coach."})
+            assigned = CoachStudentAssignment.objects.filter(student=user, coach_id=recipient_id).exists()
+            if not assigned:
+                raise serializers.ValidationError({"recipient_id": "You may only message your assigned coach."})
+
+        # Coach -> Student: require an APPROVED BookingRequest linking them
+        elif user.role == User.Role.COACH:
+            if recipient.role != User.Role.STUDENT:
+                raise serializers.ValidationError({"recipient_id": "Recipient must be a student."})
+            approved_exists = BookingRequest.objects.filter(
+                coach=user, student_id=recipient_id, status=BookingRequest.Status.APPROVED
+            ).exists()
+            if not approved_exists:
+                raise serializers.ValidationError({"recipient_id": "You may only message students with an approved booking."})
+
+        else:
+            raise serializers.ValidationError({"non_field_errors": "Only students and coaches can send messages."})
+
+        # Save recipient in context for create() to use
+        self.context["validated_recipient"] = recipient
+        return attrs
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        user = request.user if request else None
+        recipient = self.context.get("validated_recipient")
+        if user is None or recipient is None:
+            raise serializers.ValidationError("Authenticated user and recipient are required to create a message.")
+
+        # Determine coach and student
+        if user.role == User.Role.COACH:
+            coach = user
+            student = recipient
+        else:
+            coach = recipient
+            student = user
+
+        # Get or create Conversation (unique per coach/student)
+        conversation, _ = Conversation.objects.get_or_create(coach=coach, student=student)
+
+        message = Message.objects.create(conversation=conversation, sender=user, content=validated_data["content"])
+        return message

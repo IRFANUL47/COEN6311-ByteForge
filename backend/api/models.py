@@ -489,3 +489,29 @@ class ChatRating(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.rating} - {self.created_at}"
 
+
+class Conversation(models.Model):
+    coach = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="conversations_as_coach")
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="conversations_as_student")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("coach", "student")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Conversation: {self.student.username} ⇄ {self.coach.username}"
+
+
+class Message(models.Model):
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.sender.username}: {self.content[:40]}"
