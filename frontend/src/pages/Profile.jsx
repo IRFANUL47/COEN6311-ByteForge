@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Card, Form, Button, Alert, Row, Col } from 'react-bootstrap';
 import api from '../api/axios';
 import { useAuth } from '../context/auth/useAuth';
-import concordiaLogo from '../assets/concordia-logo.png';
 
 const getBmiColor = (bmi) => {
   if (bmi < 18.5) return '#e5a712';
@@ -23,6 +22,7 @@ function Profile() {
   const { user, login, logout, updateDietaryRestrictions } = useAuth();
   const navigate = useNavigate();
   const isStudent = user?.role === 'STUDENT';
+  const isCoach = user?.role === 'COACH';
 
   const [profileData, setProfileData] = useState({
     first_name: user?.first_name || '',
@@ -154,7 +154,9 @@ function Profile() {
             <h5 className='cu-auth-title mb-1' style={{ fontSize: '1.3rem' }}>
               Personal Information
             </h5>
-            <p className='cu-auth-subtitle mb-3'>Update your name, email and physical info</p>
+            <p className='cu-auth-subtitle mb-3'>
+              {isCoach ? 'Update your name and email' : 'Update your name, email and physical info'}
+            </p>
             {profileError && (
               <Alert variant='danger' className='py-2' style={{ fontSize: '0.88rem' }}>
                 {profileError}
@@ -202,71 +204,78 @@ function Profile() {
                   onChange={handleProfileChange}
                 />
               </Form.Group>
-              <Form.Group className='mb-3'>
-                <Form.Label className='cu-form-label'>Gender</Form.Label>
-                <Form.Select
-                  name='gender'
-                  className='cu-form-input'
-                  value={profileData.gender}
-                  onChange={handleProfileChange}
-                >
-                  {!profileData.gender && <option value=''>Select gender</option>}
-                  <option value='MALE'>Male</option>
-                  <option value='FEMALE'>Female</option>
-                </Form.Select>
-              </Form.Group>
-              <Row>
-                <Col>
+
+              {/* Physical stats — students only */}
+              {!isCoach && (
+                <>
                   <Form.Group className='mb-3'>
-                    <Form.Label className='cu-form-label'>Age</Form.Label>
-                    <Form.Control
-                      type='number'
-                      name='age'
+                    <Form.Label className='cu-form-label'>Gender</Form.Label>
+                    <Form.Select
+                      name='gender'
                       className='cu-form-input'
-                      min={1}
-                      max={120}
-                      value={profileData.age}
+                      value={profileData.gender}
                       onChange={handleProfileChange}
-                    />
+                    >
+                      {!profileData.gender && <option value=''>Select gender</option>}
+                      <option value='MALE'>Male</option>
+                      <option value='FEMALE'>Female</option>
+                    </Form.Select>
                   </Form.Group>
-                </Col>
-                <Col>
-                  <Form.Group className='mb-3'>
-                    <Form.Label className='cu-form-label'>Height (cm)</Form.Label>
-                    <Form.Control
-                      type='number'
-                      name='height'
-                      className='cu-form-input'
-                      min={1}
-                      step={0.1}
-                      value={profileData.height}
-                      onChange={handleProfileChange}
-                    />
-                  </Form.Group>
-                </Col>
-                <Col>
-                  <Form.Group className='mb-3'>
-                    <Form.Label className='cu-form-label'>Weight (kg)</Form.Label>
-                    <Form.Control
-                      type='number'
-                      name='weight'
-                      className='cu-form-input'
-                      min={1}
-                      step={0.1}
-                      value={profileData.weight}
-                      onChange={handleProfileChange}
-                    />
-                  </Form.Group>
-                </Col>
-              </Row>
-              {bmi && (
-                <p style={{ fontSize: '0.88rem', color: '#555', marginBottom: '1rem' }}>
-                  BMI:{' '}
-                  <strong style={{ color: getBmiColor(bmi) }}>
-                    {bmi} — {getBmiLabel(bmi)}
-                  </strong>
-                </p>
+                  <Row>
+                    <Col>
+                      <Form.Group className='mb-3'>
+                        <Form.Label className='cu-form-label'>Age</Form.Label>
+                        <Form.Control
+                          type='number'
+                          name='age'
+                          className='cu-form-input'
+                          min={1}
+                          max={120}
+                          value={profileData.age}
+                          onChange={handleProfileChange}
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col>
+                      <Form.Group className='mb-3'>
+                        <Form.Label className='cu-form-label'>Height (cm)</Form.Label>
+                        <Form.Control
+                          type='number'
+                          name='height'
+                          className='cu-form-input'
+                          min={1}
+                          step={0.1}
+                          value={profileData.height}
+                          onChange={handleProfileChange}
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col>
+                      <Form.Group className='mb-3'>
+                        <Form.Label className='cu-form-label'>Weight (kg)</Form.Label>
+                        <Form.Control
+                          type='number'
+                          name='weight'
+                          className='cu-form-input'
+                          min={1}
+                          step={0.1}
+                          value={profileData.weight}
+                          onChange={handleProfileChange}
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                  {bmi && (
+                    <p style={{ fontSize: '0.88rem', color: '#555', marginBottom: '1rem' }}>
+                      BMI:{' '}
+                      <strong style={{ color: getBmiColor(bmi) }}>
+                        {bmi} — {getBmiLabel(bmi)}
+                      </strong>
+                    </p>
+                  )}
+                </>
               )}
+
               <Button type='submit' className='cu-btn-submit' disabled={profileLoading}>
                 {profileLoading ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -274,7 +283,7 @@ function Profile() {
           </Card.Body>
         </Card>
 
-        {/* Dietary Restrictions - students only */}
+        {/* Dietary Restrictions — students only */}
         {isStudent && (
           <Card className='cu-auth-card p-4 mb-4'>
             <Card.Body>
