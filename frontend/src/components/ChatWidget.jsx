@@ -240,6 +240,23 @@ export default function ChatWidget() {
     return null;
   };
 
+  const quickQuestions = {
+    STUDENT: [
+      'What time does the gym close today?',
+      'Who is my assigned coach?',
+      'Where is the gym located?',
+      'What are the membership rates?',
+    ],
+    COACH: [
+      'Who are my assigned students?',
+      'Do any of my students have dietary restrictions?',
+      'What workout plans have I created?',
+    ],
+    ADMIN: ['Which coaches are pending approval?', 'What equipment do we have?', 'How do I approve a coach?'],
+  };
+
+  const userQuickQuestions = quickQuestions[user?.role] || [];
+
   return (
     <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999 }}>
       {open && (
@@ -303,6 +320,40 @@ export default function ChatWidget() {
             )}
             <div ref={bottomRef} />
           </div>
+
+          {userQuickQuestions.length > 0 && messages.length <= 2 && (
+            <div
+              style={{
+                padding: '8px 12px',
+                display: 'flex',
+                flexWrap: 'wrap',
+                gap: '6px',
+                borderTop: '1px solid #eee',
+              }}
+            >
+              {userQuickQuestions.map((q, i) => (
+                <button
+                  key={i}
+                  onClick={() => {
+                    setInput(q);
+                    setTimeout(() => sendMessage(), 0);
+                  }}
+                  style={{
+                    background: '#f5eeee',
+                    color: '#912338',
+                    border: '1px solid #e4dcdc',
+                    borderRadius: '20px',
+                    padding: '5px 12px',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    fontWeight: '500',
+                  }}
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          )}
 
           <div
             style={{ display: 'flex', padding: '10px', borderTop: '1px solid #eee', gap: '8px', alignItems: 'center' }}
