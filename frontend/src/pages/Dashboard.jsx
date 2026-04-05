@@ -137,83 +137,85 @@ function Dashboard() {
 
       <Row className='g-4'>
         {/* ── Fitness Stats (unchanged) ── */}
-        <Col md={6}>
-          <Card className='cu-auth-card p-4' style={cardStyle}>
-            <Card.Body>
-              <div className='d-flex justify-content-between align-items-start mb-3'>
-                <div>
-                  <h5 className='cu-auth-title mb-0' style={{ fontSize: '1.1rem' }}>
-                    Fitness Stats
-                  </h5>
-                  <span
-                    style={{ fontSize: '0.78rem', color: '#912338', cursor: 'pointer', textDecoration: 'underline' }}
-                    onClick={() => navigate('/profile')}
-                  >
-                    Edit in Profile
-                  </span>
+        {!isCoach && (
+          <Col md={6}>
+            <Card className='cu-auth-card p-4' style={cardStyle}>
+              <Card.Body>
+                <div className='d-flex justify-content-between align-items-start mb-3'>
+                  <div>
+                    <h5 className='cu-auth-title mb-0' style={{ fontSize: '1.1rem' }}>
+                      Fitness Stats
+                    </h5>
+                    <span
+                      style={{ fontSize: '0.78rem', color: '#912338', cursor: 'pointer', textDecoration: 'underline' }}
+                      onClick={() => navigate('/profile')}
+                    >
+                      Edit in Profile
+                    </span>
+                  </div>
+                  {bmi && (
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '1.8rem', fontWeight: 700, color: getBmiColor(bmi), lineHeight: 1 }}>
+                        {bmi}
+                      </div>
+                      <div style={{ fontSize: '0.72rem', color: getBmiColor(bmi), fontWeight: 600 }}>
+                        {getBmiLabel(bmi)}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: '#bbb' }}>BMI</div>
+                    </div>
+                  )}
                 </div>
-                {bmi && (
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 700, color: getBmiColor(bmi), lineHeight: 1 }}>
-                      {bmi}
+                <Row className='g-3'>
+                  <Col xs={6}>
+                    <div style={labelStyle}>Age</div>
+                    <div style={valueStyle}>{user?.age ? `${user.age} yrs` : '—'}</div>
+                  </Col>
+                  <Col xs={6}>
+                    <div style={labelStyle}>Gender</div>
+                    <div style={valueStyle}>
+                      {user?.gender ? user.gender.charAt(0) + user.gender.slice(1).toLowerCase() : '—'}
                     </div>
-                    <div style={{ fontSize: '0.72rem', color: getBmiColor(bmi), fontWeight: 600 }}>
-                      {getBmiLabel(bmi)}
+                  </Col>
+                  <Col xs={6}>
+                    <div style={labelStyle}>Height</div>
+                    <div style={valueStyle}>{user?.height ? `${user.height} cm` : '—'}</div>
+                  </Col>
+                  <Col xs={6}>
+                    <div style={labelStyle}>Weight</div>
+                    <div style={valueStyle}>{user?.weight ? `${user.weight} kg` : '—'}</div>
+                  </Col>
+                </Row>
+                {isStudent && dietaryRestrictions.length > 0 && (
+                  <div style={{ marginTop: '1rem' }}>
+                    <div style={labelStyle}>Dietary Restrictions</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.3rem' }}>
+                      {dietaryRestrictions.map((r) => (
+                        <span
+                          key={r.key}
+                          style={{
+                            fontSize: '0.78rem',
+                            background: '#f5eeee',
+                            color: '#912338',
+                            padding: '0.2rem 0.6rem',
+                            borderRadius: '20px',
+                            fontWeight: 500,
+                          }}
+                        >
+                          {r.display_name}
+                        </span>
+                      ))}
                     </div>
-                    <div style={{ fontSize: '0.68rem', color: '#bbb' }}>BMI</div>
                   </div>
                 )}
-              </div>
-              <Row className='g-3'>
-                <Col xs={6}>
-                  <div style={labelStyle}>Age</div>
-                  <div style={valueStyle}>{user?.age ? `${user.age} yrs` : '—'}</div>
-                </Col>
-                <Col xs={6}>
-                  <div style={labelStyle}>Gender</div>
-                  <div style={valueStyle}>
-                    {user?.gender ? user.gender.charAt(0) + user.gender.slice(1).toLowerCase() : '—'}
-                  </div>
-                </Col>
-                <Col xs={6}>
-                  <div style={labelStyle}>Height</div>
-                  <div style={valueStyle}>{user?.height ? `${user.height} cm` : '—'}</div>
-                </Col>
-                <Col xs={6}>
-                  <div style={labelStyle}>Weight</div>
-                  <div style={valueStyle}>{user?.weight ? `${user.weight} kg` : '—'}</div>
-                </Col>
-              </Row>
-              {isStudent && dietaryRestrictions.length > 0 && (
-                <div style={{ marginTop: '1rem' }}>
-                  <div style={labelStyle}>Dietary Restrictions</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.3rem' }}>
-                    {dietaryRestrictions.map((r) => (
-                      <span
-                        key={r.key}
-                        style={{
-                          fontSize: '0.78rem',
-                          background: '#f5eeee',
-                          color: '#912338',
-                          padding: '0.2rem 0.6rem',
-                          borderRadius: '20px',
-                          fontWeight: 500,
-                        }}
-                      >
-                        {r.display_name}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {!bmi && (
-                <p style={{ color: '#bbb', fontSize: '0.8rem', marginTop: '1rem', marginBottom: 0 }}>
-                  Add height and weight in Profile to see your BMI
-                </p>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
+                {!bmi && (
+                  <p style={{ color: '#bbb', fontSize: '0.8rem', marginTop: '1rem', marginBottom: 0 }}>
+                    Add height and weight in Profile to see your BMI
+                  </p>
+                )}
+              </Card.Body>
+            </Card>
+          </Col>
+        )}
 
         {/* ── Upcoming Session ── */}
         <Col md={6}>
