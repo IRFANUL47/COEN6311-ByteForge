@@ -8,3 +8,7 @@ venv-cufitness/
 db.sqlite3
 .env
 
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
