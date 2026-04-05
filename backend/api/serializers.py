@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.utils import timezone
 from rest_framework import serializers
 from .models import (
 CustomUser, DietaryRestriction, UserDietaryRestriction,
@@ -195,6 +196,17 @@ class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
         if student and getattr(student, "role", None) != User.Role.STUDENT:
             raise serializers.ValidationError({"student": "The selected user is not a student."})
 
+        # ── Only allow coach to assign plans to their own students ──
+        if student:
+            from .models import CoachStudentAssignment
+            is_assigned = CoachStudentAssignment.objects.filter(
+                coach=user, student=student
+            ).exists()
+            if not is_assigned:
+                raise serializers.ValidationError(
+                    {"student": "You can only assign plans to students assigned to you."}
+                )
+        
         start = attrs.get("start_date")
         end = attrs.get("end_date")
         if start and end and end < start:
@@ -311,7 +323,7 @@ class WorkoutPlanCreateUpdateSerializer(serializers.ModelSerializer):
             self.fields["student"].queryset = User.objects.filter(role=User.Role.STUDENT)
         except Exception:
             self.fields["student"].queryset = User.objects.all()
-
+    
     def validate(self, attrs):
         request = self.context.get("request")
         if request is None:
@@ -325,6 +337,17 @@ class WorkoutPlanCreateUpdateSerializer(serializers.ModelSerializer):
         if student and getattr(student, "role", None) != User.Role.STUDENT:
             raise serializers.ValidationError({"student": "The selected user is not a student."})
 
+        # ── Only allow coach to assign plans to their own students ──
+        if student:
+            from .models import CoachStudentAssignment
+            is_assigned = CoachStudentAssignment.objects.filter(
+                coach=user, student=student
+            ).exists()
+            if not is_assigned:
+                raise serializers.ValidationError(
+                    {"student": "You can only assign plans to students assigned to you."}
+                )
+        
         start = attrs.get("start_date")
         end   = attrs.get("end_date")
         if start and end and end < start:
@@ -434,6 +457,14 @@ class CoachAvailabilitySerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         start = attrs.get("start_time")
         end   = attrs.get("end_time")
+
+        # ── NEW: Deny past slots ─────────────────────────────────
+        if start and start <= timezone.now():
+            raise serializers.ValidationError(
+                {"start_time": "Availability slots must be in the future."}
+            )
+        # ─────────────────────────────────────────────────────────
+
         if start and end and end <= start:
             raise serializers.ValidationError({"end_time": "end_time must be after start_time."})
         return attrs
@@ -505,14 +536,22 @@ class BookingRequestCreateSerializer(serializers.ModelSerializer):
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    slot_start = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model  = Notification
         fields = (
             "id", "notification_type", "message",
-            "is_read", "booking", "created_at"
+            "is_read", "booking", "slot_start", "created_at"
         )
         read_only_fields = fields
 
+    def get_slot_start(self, obj):
+        # booking may be null (e.g. after slot deletion) — guard safely
+        try:
+            return obj.booking.slot.start_time.isoformat() if obj.booking and obj.booking.slot else None
+        except Exception:
+            return None
 
 class MessageSerializer(serializers.ModelSerializer):
     sender_name = serializers.SerializerMethodField(read_only=True)
@@ -636,3 +675,4 @@ class ConversationSerializer(serializers.ModelSerializer):
         if not user:
             return 0
         return obj.messages.filter(read=False).exclude(sender_id=user.pk).count()
+

@@ -33,7 +33,6 @@ def update_profile(request):
     user.weight = float(data.get("weight", user.weight)) if data.get("weight") else user.weight
     user.age = int(data.get("age", user.age)) if data.get("age") else user.age
     user.save()
-    
 
     height = user.height
     weight = user.weight
@@ -89,10 +88,24 @@ def delete_profile(request):
 def get_student_profile_by_concordia_id(request, concordia_id):
     if request.user.role != 'COACH':
         return Response({"detail": "Only coaches can look up students."}, status=status.HTTP_403_FORBIDDEN)
+
     try:
         student = User.objects.get(concordia_id=concordia_id, role='STUDENT')
     except User.DoesNotExist:
         return Response({"detail": "Student not found."}, status=status.HTTP_404_NOT_FOUND)
+
+    # ── Only allow coaches to look up students assigned to them ──
+    from ..models import CoachStudentAssignment
+    is_assigned = CoachStudentAssignment.objects.filter(
+        coach=request.user, student=student
+    ).exists()
+    if not is_assigned:
+        return Response(
+            {"detail": "You can only look up students assigned to you."},
+            status=status.HTTP_403_FORBIDDEN
+        )
+    # ─────────────────────────────────────────────────────────────
+
     return Response({
         "id": student.id,
         "first_name": student.first_name,

@@ -1,4 +1,6 @@
 from django.shortcuts import get_object_or_404
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -30,6 +32,19 @@ def create_notification(recipient, notification_type, message, booking=None):
         message=message,
         booking=booking,
     )
+
+
+def _purge_old_slots():
+    """
+    Delete availability slots (and their bookings via CASCADE) whose
+    start_time was more than 1 day ago. Slots that just passed are kept
+    so recent history isn't immediately wiped.
+    Called at the start of availability_list so lists stay clean
+    without needing a background task.
+    """
+    from datetime import timedelta
+    cutoff = timezone.now() - timedelta(days=1)
+    CoachAvailability.objects.filter(start_time__lt=cutoff).delete()
 
 
 # ── COACH LIST ─────────────────────────────────────────────────────────────────
@@ -160,6 +175,7 @@ def availability_list(request):
     Coach sees all their own slots.
     Student sees only their assigned coach's unbooked slots.
     """
+    _purge_old_slots()
     user = request.user
     if getattr(user, "role", None) == CustomUser.Role.COACH:
         qs = CoachAvailability.objects.filter(coach=user)
@@ -194,13 +210,59 @@ def availability_create(request):
             {"detail": "Only coaches can create availability slots."},
             status=status.HTTP_403_FORBIDDEN
         )
+    # ── NEW: Deny slots in the past ──────────────────────────────
+    start_time_raw = request.data.get("start_time")
+    if start_time_raw:
+        from dateutil.parser import parse as parse_dt
+        try:
+            parsed = parse_dt(str(start_time_raw))
+            if parsed.tzinfo is None:
+                from django.utils.timezone import make_aware
+                parsed = make_aware(parsed)
+            if parsed <= timezone.now():
+                return Response(
+                    {"detail": "Availability slots must be in the future."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except Exception as ex:
+            pass  # let serializer validation catch malformed datetimes
+    # ─────────────────────────────────────────────────────────────
     serializer = CoachAvailabilitySerializer(
         data=request.data,
         context={"request": request}
     )
     if serializer.is_valid():
-        serializer.save(coach=user)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        try:
+            serializer.save(coach=user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except DjangoValidationError as e:
+            # full_clean() on the model raises this for unique_together violations
+            messages = e.message_dict if hasattr(e, "message_dict") else {"detail": e.messages}
+            # Friendly message for the duplicate slot case
+            all_msgs = str(messages)
+            if "already exists" in all_msgs.lower():
+                return Response(
+                    {"detail": "You already have a slot at that start time. Please choose a different time."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            return Response(messages, status=status.HTTP_400_BAD_REQUEST)
+    # ── Flatten serializer errors into a single detail message ───
+    errors = serializer.errors
+    if "start_time" in errors:
+        return Response(
+            {"detail": errors["start_time"][0]},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if "end_time" in errors:
+        return Response(
+            {"detail": errors["end_time"][0]},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    if "non_field_errors" in errors:
+        return Response(
+            {"detail": errors["non_field_errors"][0]},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -261,6 +323,28 @@ def booking_create(request):
             {"detail": "Only students can create booking requests."},
             status=status.HTTP_403_FORBIDDEN
         )
+
+    # ── Handle cancelled bookings on this slot ───────────────────
+    # The slot has a OneToOneField to BookingRequest, so a leftover
+    # CANCELLED record blocks new bookings. We either block the same
+    # student from rebooking, or clear the old record for a new student.
+    slot_id = request.data.get("slot")
+    if slot_id:
+        existing_cancelled = BookingRequest.objects.filter(
+            slot_id=slot_id,
+            status=BookingRequest.Status.CANCELLED,
+        ).first()
+        if existing_cancelled:
+            if existing_cancelled.student_id == user.pk:
+                # Same student — block them from rebooking
+                return Response(
+                    {"detail": "You already cancelled a booking for this slot and cannot rebook it."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            else:
+                # Different student — delete old cancelled record so slot is bookable
+                existing_cancelled.delete()
+    # ─────────────────────────────────────────────────────────────
     serializer = BookingRequestCreateSerializer(
         data=request.data,
         context={"request": request}
@@ -421,25 +505,33 @@ def admin_approve_rejection(request, pk):
             {"detail": f"This booking is not pending admin review."},
             status=status.HTTP_400_BAD_REQUEST
         )
+    # ── NEW: Delete the slot so it disappears entirely ───────────
+    slot = booking.slot
+    rejection_note = booking.rejection_note  # ← save this first
+    coach_name = f"{booking.coach.first_name} {booking.coach.last_name}"
+    slot_time = booking.slot.start_time.strftime('%b %d, %Y at %I:%M %p')
+    student = booking.student
 
     booking.status = BookingRequest.Status.REJECTED
     booking.save()
+    slot.delete()  # cascades — booking is also deleted after this
+    # ─────────────────────────────────────────────────────────────
 
     # In-app notification to student with rejection reason
     create_notification(
-        recipient=booking.student,
+        recipient=student,
         notification_type=Notification.NotificationType.BOOKING_REJECTED,
         message=(
-            f"Your booking with Coach "
-            f"{booking.coach.first_name} {booking.coach.last_name} "
-            f"on {booking.slot.start_time.strftime('%b %d, %Y at %I:%M %p')} "
-            f"has been rejected. Reason: {booking.rejection_note}"
+            f"Your booking with Coach {coach_name} "
+            f"on {slot_time} "
+            f"has been rejected. Reason: {rejection_note}"
         ),
-        booking=booking,
+        booking=None, # booking will be deleted so don't reference it
     )
-
-    serializer = BookingRequestSerializer(booking)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response(
+        {"detail": "Rejection approved. Slot and booking have been removed."},
+        status=status.HTTP_200_OK
+    )
 
 
 @api_view(["PATCH"])
@@ -504,13 +596,15 @@ def booking_cancel(request, pk):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    booking.status = BookingRequest.Status.CANCELLED
+    # ── NEW: Free up the slot; keep booking record so we can block
+    # the same student from rebooking this slot ───────────────────
     booking.slot.is_booked = False
     booking.slot.save()
+    booking.status = BookingRequest.Status.CANCELLED
     booking.save()
+    # ─────────────────────────────────────────────────────────────
 
-    serializer = BookingRequestSerializer(booking)
-    return Response(serializer.data, status=status.HTTP_200_OK)
+    return Response({"detail": "Booking cancelled."}, status=status.HTTP_200_OK)
 
 
 # ── NOTIFICATIONS ──────────────────────────────────────────────────────────────

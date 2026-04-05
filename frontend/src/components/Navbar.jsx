@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Navbar, Container, Nav, Button } from 'react-bootstrap';
 import { useAuth } from '../context/auth/useAuth';
+import NotificationBell from '../pages/NotificationBell';
 
 function AppNavbar() {
   const location = useLocation();
@@ -26,6 +27,9 @@ function AppNavbar() {
                 <Link to='/dashboard' className={`cu-nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}>
                   Home
                 </Link>
+                <Link to='/sessions' className={`cu-nav-link ${location.pathname === '/sessions' ? 'active' : ''}`}>
+                  Sessions
+                </Link>
                 <Link to='/workouts' className={`cu-nav-link ${location.pathname === '/workouts' ? 'active' : ''}`}>
                   Workout Plans
                 </Link>
@@ -43,6 +47,7 @@ function AppNavbar() {
                 </Link>
               </Nav>
               <Nav className='align-items-center gap-2'>
+                <NotificationBell />
                 <Button className='cu-btn-login' size='sm' onClick={handleLogout}>
                   Logout
                 </Button>
