@@ -634,3 +634,15 @@ class ConversationSerializer(serializers.ModelSerializer):
         if not user:
             return 0
         return obj.messages.filter(read=False).exclude(sender_id=user.pk).count()
+
+
+class PendingUserSerializer(serializers.ModelSerializer):
+    full_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = CustomUser
+        fields = ("id", "username", "full_name", "email", "concordia_id", "role", "is_approved", "is_active", "date_joined")
+        read_only_fields = fields
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}".strip()

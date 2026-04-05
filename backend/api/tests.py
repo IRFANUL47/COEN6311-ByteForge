@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 from django.utils import timezone
 from datetime import timedelta
 
-from api.models import BookingRequest, CoachStudentAssignment, CoachAvailability, Conversation, Message
+from api.models import BookingRequest, CoachStudentAssignment, CoachAvailability, Conversation, Message, Notification
 
 User = get_user_model()
 
@@ -135,3 +135,59 @@ class ConversationEndpointsTests(TestCase):
         # msg1 should now be read, msg2 remains (was sent by coach)
         self.assertTrue(Message.objects.get(pk=self.msg1.pk).read)
         self.assertFalse(Message.objects.get(pk=self.msg2.pk).read)
+
+class AdminApprovalTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        # create an admin user
+        self.admin = User.objects.create_superuser(
+            username="admin",
+            password="adminpw",
+            email="admin@example.com",
+            concordia_id="A001",
+            is_approved=True,
+        )
+        # new user (registered) — default is_approved=False
+        self.pending = User.objects.create_user(
+            username="pending1",
+            password="pw",
+            concordia_id="P001",
+            is_approved=False,
+            is_active=True,
+        )
+
+    def test_new_user_is_unapproved_by_default(self):
+        self.assertFalse(self.pending.is_approved)
+
+    def test_admin_can_list_pending_users(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.get(reverse("admin-pending-users-list"))
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(any(u["id"] == self.pending.pk for u in data))
+
+    def test_admin_can_approve_user_and_user_can_login(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post(reverse("admin-pending-user-approve", args=[self.pending.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.pending.refresh_from_db()
+        self.assertTrue(self.pending.is_approved)
+        self.assertTrue(self.pending.is_active)
+        self.assertTrue(Notification.objects.filter(recipient=self.pending).exists())
+
+    def test_admin_can_reject_user_and_user_cannot_login(self):
+        self.client.force_authenticate(self.admin)
+        resp = self.client.post(reverse("admin-pending-user-reject", args=[self.pending.pk]))
+        self.assertEqual(resp.status_code, 200)
+        self.pending.refresh_from_db()
+        self.assertFalse(self.pending.is_active)
+        self.assertTrue(Notification.objects.filter(recipient=self.pending).exists())
+
+    def test_unapproved_user_cannot_login(self):
+        # Attempt to call login endpoint with pending user's credentials
+        resp = self.client.post(reverse("auth-login"), {"concordia_id": self.pending.username or self.pending.concordia_id, "password": "pw"})
+        # Expect 401 or 403; prefer 403 with our message
+        self.assertIn(resp.status_code, (401, 403))
+        if resp.status_code == 403:
+            data = resp.json()
+            self.assertIn("account_pending_approval", data.get("detail", "") or data.get("message", ""))

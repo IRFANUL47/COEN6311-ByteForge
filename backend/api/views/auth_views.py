@@ -40,6 +40,16 @@ def login(request):
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
+    # NEW: Prevent login for users who are not approved yet
+    if not getattr(user, "is_approved", False):
+        return Response(
+            {
+                "detail": "account_pending_approval",
+                "message": "Your account is pending administrator approval. You cannot log in yet.",
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     height = float(user.height) if user.height else None
     weight = float(user.weight) if user.weight else None
     bmi = round(weight / ((height / 100) ** 2), 1) if height and weight else None
