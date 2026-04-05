@@ -13,6 +13,8 @@ function AppNavbar() {
     navigate('/');
   };
 
+  const isAdmin = user?.role === 'ADMIN';
+
   return (
     <Navbar className='cu-navbar' expand='lg' sticky='top'>
       <Container fluid className='px-3'>
@@ -24,24 +26,37 @@ function AppNavbar() {
           {user ? (
             <>
               <Nav className='me-auto'>
-                <Link to='/dashboard' className={`cu-nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}>
-                  Home
-                </Link>
+                {!isAdmin && (
+                  <Link to='/dashboard' className={`cu-nav-link ${location.pathname === '/dashboard' ? 'active' : ''}`}>
+                    Home
+                  </Link>
+                )}
                 <Link to='/sessions' className={`cu-nav-link ${location.pathname === '/sessions' ? 'active' : ''}`}>
                   Sessions
                 </Link>
-                <Link to='/workouts' className={`cu-nav-link ${location.pathname === '/workouts' ? 'active' : ''}`}>
-                  Workout Plans
-                </Link>
-                <Link
-                  to='/nutrition-plans'
-                  className={`cu-nav-link ${location.pathname === '/nutrition-plans' ? 'active' : ''}`}
-                >
-                  Nutrition Plans
-                </Link>
-                <Link to='/profile' className={`cu-nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
-                  Profile
-                </Link>
+                {!isAdmin && (
+                  <Link to='/workouts' className={`cu-nav-link ${location.pathname === '/workouts' ? 'active' : ''}`}>
+                    Workout Plans
+                  </Link>
+                )}
+                {!isAdmin && (
+                  <Link
+                    to='/nutrition-plans'
+                    className={`cu-nav-link ${location.pathname === '/nutrition-plans' ? 'active' : ''}`}
+                  >
+                    Nutrition Plans
+                  </Link>
+                )}
+                {!isAdmin && (
+                  <Link to='/messages' className={`cu-nav-link ${location.pathname === '/messages' ? 'active' : ''}`}>
+                    Messages
+                  </Link>
+                )}
+                {!isAdmin && (
+                  <Link to='/profile' className={`cu-nav-link ${location.pathname === '/profile' ? 'active' : ''}`}>
+                    Profile
+                  </Link>
+                )}
                 <Link to='/equipment' className={`cu-nav-link ${location.pathname === '/equipment' ? 'active' : ''}`}>
                   Equipment
                 </Link>
