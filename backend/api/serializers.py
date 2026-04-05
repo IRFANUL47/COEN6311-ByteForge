@@ -2,13 +2,17 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from .models import (
-    CustomUser, DietaryRestriction, UserDietaryRestriction,
+CustomUser, DietaryRestriction, UserDietaryRestriction,
     NutritionPlan, WorkoutPlan, WorkoutDay, Exercise, WorkoutSession,
-    CoachStudentAssignment, CoachAvailability, BookingRequest, Notification
+    CoachStudentAssignment, CoachAvailability, BookingRequest, Notification,
+    Message, Conversation
 )
+from .utils.messaging import get_or_create_conversation_safe
+from django.conf import settings
 
 User = get_user_model()
 
+MAX_MESSAGE_LENGTH = getattr(settings, "MESSAGE_MAX_LENGTH", 5000)
 
 class RegisterSerializer(serializers.Serializer):
     first_name = serializers.CharField(max_length=150)
@@ -207,9 +211,6 @@ class NutritionPlanCreateUpdateSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         return super().update(instance, validated_data)
     
-# ─────────────────────────────────────────────
-# WORKOUT SERIALIZERS
-# ─────────────────────────────────────────────
 
 class ExerciseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -369,7 +370,6 @@ class WorkoutPlanCreateUpdateSerializer(serializers.ModelSerializer):
 
         return instance
     
-# ── BOOKING SERIALIZERS ────────────────────────────────────────────────────────
 
 class CoachListSerializer(serializers.ModelSerializer):
     """Shows coaches to students when browsing — includes available slot count."""
@@ -512,3 +512,127 @@ class NotificationSerializer(serializers.ModelSerializer):
             "is_read", "booking", "created_at"
         )
         read_only_fields = fields
+
+
+class MessageSerializer(serializers.ModelSerializer):
+    sender_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Message
+        fields = ("id", "conversation", "sender", "sender_name", "content", "created_at", "read")
+        read_only_fields = ("id", "sender", "created_at", "sender_name", "conversation")
+
+    def get_sender_name(self, obj):
+        return f"{obj.sender.first_name} {obj.sender.last_name}".strip()
+
+    def validate_content(self, value):
+        text = (value or "").strip()
+        if not text:
+            raise serializers.ValidationError("Message content cannot be empty.")
+        if len(text) > MAX_MESSAGE_LENGTH:
+            raise serializers.ValidationError(f"Message content exceeds {MAX_MESSAGE_LENGTH} characters.")
+        return text
+
+    def validate(self, attrs):
+        # recipient_id comes from payload (initial_data) or context
+        recipient_id = self.initial_data.get("recipient_id") or self.context.get("recipient_id")
+        request = self.context.get("request")
+        user = request.user if request else None
+
+        if user is None or not getattr(user, "is_authenticated", False):
+            raise serializers.ValidationError({"non_field_errors": "Authentication is required."})
+
+        if not recipient_id:
+            raise serializers.ValidationError({"recipient_id": "recipient_id is required."})
+
+        try:
+            recipient_id = int(recipient_id)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError({"recipient_id": "recipient_id must be an integer."})
+
+        if recipient_id == user.pk:
+            raise serializers.ValidationError({"recipient_id": "Cannot send a message to yourself."})
+
+        try:
+            recipient = User.objects.get(pk=recipient_id)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({"recipient_id": "Recipient not found."})
+
+        # Student -> Coach: student must be assigned to that coach
+        if user.role == User.Role.STUDENT:
+            if recipient.role != User.Role.COACH:
+                raise serializers.ValidationError({"recipient_id": "Recipient must be a coach."})
+            assigned = CoachStudentAssignment.objects.filter(student=user, coach_id=recipient_id).exists()
+            if not assigned:
+                raise serializers.ValidationError({"recipient_id": "You may only message your assigned coach."})
+
+        # Coach -> Student: require an APPROVED BookingRequest linking them
+        elif user.role == User.Role.COACH:
+            if recipient.role != User.Role.STUDENT:
+                raise serializers.ValidationError({"recipient_id": "Recipient must be a student."})
+            approved_exists = BookingRequest.objects.filter(
+                coach=user, student_id=recipient_id, status=BookingRequest.Status.APPROVED
+            ).exists()
+            if not approved_exists:
+                raise serializers.ValidationError({"recipient_id": "You may only message students with an approved booking."})
+
+        else:
+            raise serializers.ValidationError({"non_field_errors": "Only students and coaches can send messages."})
+
+        # Save the resolved recipient for create()
+        self.context["validated_recipient"] = recipient
+        return attrs
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        user = request.user
+        recipient = self.context.get("validated_recipient")
+        # Determine coach & student
+        if user.role == User.Role.COACH:
+            coach = user
+            student = recipient
+        else:
+            coach = recipient
+            student = user
+
+        # Use safe helper to avoid race on conversation creation
+        conversation, _ = get_or_create_conversation_safe(Conversation, coach, student)
+
+        message = Message.objects.create(conversation=conversation, sender=user, content=validated_data["content"])
+        return message
+
+
+class ConversationSerializer(serializers.ModelSerializer):
+    other_participant = serializers.SerializerMethodField()
+    last_message_preview = serializers.SerializerMethodField()
+    unread_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Conversation
+        fields = ("id", "coach", "student", "other_participant", "last_message_at", "created_at", "last_message_preview", "unread_count")
+        read_only_fields = ("id", "coach", "student", "last_message_at", "created_at", "last_message_preview", "unread_count")
+
+    def get_other_participant(self, obj):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        other = obj.student if user and user.pk == obj.coach_id else obj.coach
+        return {"id": other.pk, "name": f"{other.first_name} {other.last_name}".strip(), "role": getattr(other, "role", None)}
+
+    def get_last_message_preview(self, obj):
+        # Prefer pre-fetched attribute if view annotated it to avoid extra query
+        preview = getattr(obj, "last_message_preview", None)
+        if preview is not None:
+            return preview
+        last = obj.messages.order_by("-created_at").first()
+        return (last.content[:200] + "...") if last and len(last.content) > 200 else (last.content if last else "")
+
+    def get_unread_count(self, obj):
+        # Prefer annotated value if present
+        cnt = getattr(obj, "unread_count", None)
+        if cnt is not None:
+            return int(cnt)
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user:
+            return 0
+        return obj.messages.filter(read=False).exclude(sender_id=user.pk).count()

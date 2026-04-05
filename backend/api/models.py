@@ -1,7 +1,8 @@
 from django.contrib.auth.models import AbstractUser
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 from django.core.exceptions import ValidationError
+
 
 class CustomUser(AbstractUser):
     class Role(models.TextChoices):
@@ -135,9 +136,8 @@ class NutritionPlan(models.Model):
         return user.pk == self.coach_id
     
     # ──────────────────────────────────────────────
-# WORKOUT PLAN
-# Follows the same pattern as NutritionPlan
-# ──────────────────────────────────────────────
+
+
 class WorkoutPlan(models.Model):
     coach = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -204,10 +204,6 @@ class WorkoutPlan(models.Model):
         return user.pk == self.coach_id
 
 
-# ──────────────────────────────────────────────
-# WORKOUT DAY
-# A named day within the plan, e.g. "Day 1 - Upper Body"
-# ──────────────────────────────────────────────
 class WorkoutDay(models.Model):
     plan       = models.ForeignKey(WorkoutPlan, on_delete=models.CASCADE, related_name="days")
     day_number = models.PositiveIntegerField()
@@ -222,10 +218,6 @@ class WorkoutDay(models.Model):
         return f"{self.plan.title} — Day {self.day_number}: {self.label}"
 
 
-# ──────────────────────────────────────────────
-# EXERCISE
-# Individual exercise inside a WorkoutDay
-# ──────────────────────────────────────────────
 class Exercise(models.Model):
     workout_day   = models.ForeignKey(WorkoutDay, on_delete=models.CASCADE, related_name="exercises")
     name          = models.CharField(max_length=150)
@@ -238,10 +230,6 @@ class Exercise(models.Model):
         return f"{self.name} — {self.sets}x{self.reps}"
 
 
-# ──────────────────────────────────────────────
-# WORKOUT SESSION
-# Tracks a student completing a WorkoutDay (US2)
-# ──────────────────────────────────────────────
 class WorkoutSession(models.Model):
     class Status(models.TextChoices):
         PENDING   = "PENDING",   "Pending"
@@ -265,10 +253,7 @@ class WorkoutSession(models.Model):
     def __str__(self):
         return f"{self.student.username} — {self.workout_day} [{self.status}]"
     
-# ──────────────────────────────────────────────
-# COACH STUDENT ASSIGNMENT
-# Student selects a coach and is permanently assigned
-# ──────────────────────────────────────────────
+
 class CoachStudentAssignment(models.Model):
     coach   = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -304,10 +289,6 @@ class CoachStudentAssignment(models.Model):
         super().save(*args, **kwargs)
 
 
-# ──────────────────────────────────────────────
-# COACH AVAILABILITY
-# Coach defines available time slots for booking
-# ──────────────────────────────────────────────
 class CoachAvailability(models.Model):
     coach      = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -344,10 +325,6 @@ class CoachAvailability(models.Model):
         super().save(*args, **kwargs)
 
 
-# ──────────────────────────────────────────────
-# BOOKING REQUEST
-# Student books one of their assigned coach's slots
-# ──────────────────────────────────────────────
 class BookingRequest(models.Model):
     class Status(models.TextChoices):
         PENDING       = "PENDING",       "Pending"
@@ -438,10 +415,6 @@ class BookingRequest(models.Model):
         return user.pk == self.coach_id
 
 
-# ──────────────────────────────────────────────
-# NOTIFICATION
-# In-app bell notifications for coach and student
-# ──────────────────────────────────────────────
 class Notification(models.Model):
     class NotificationType(models.TextChoices):
         BOOKING_REQUEST      = "BOOKING_REQUEST",      "New Booking Request"
@@ -476,6 +449,7 @@ class Notification(models.Model):
     def __str__(self):
         return f"→ {self.recipient.username} [{self.notification_type}]"
 
+
 class ChatRating(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chat_ratings')
     message = models.TextField()
@@ -489,3 +463,57 @@ class ChatRating(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.rating} - {self.created_at}"
 
+
+class Conversation(models.Model):
+    coach = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="conversations_as_coach",
+    )
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="conversations_as_student",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    # track last activity for sorting by most recent conversation activity
+    last_message_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    class Meta:
+        unique_together = ("coach", "student")
+        # order by recent activity first, fallback to creation time
+        ordering = ["-last_message_at", "-created_at"]
+
+    def __str__(self):
+        return f"Conversation: {self.student.username} ⇄ {self.coach.username}"
+
+
+class Message(models.Model):
+    conversation = models.ForeignKey(Conversation, on_delete=models.CASCADE, related_name="messages")
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    read = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["conversation", "created_at"]),
+        ]
+
+    def clean(self):
+        # Ensure sender is participant in conversation
+        if self.sender_id not in (self.conversation.coach_id, self.conversation.student_id):
+            raise ValidationError("Message sender must be a participant in the conversation.")
+
+    def save(self, *args, **kwargs):
+        # Validate as before
+        self.full_clean()
+        is_new = self.pk is None
+        super().save(*args, **kwargs)
+
+        if is_new:
+            # Use atomic DB update to set conversation.last_message_at to this message's created_at (avoids reloading the Conversation instance and is safe for concurrency)
+            from django.db.models import F
+            Conversation.objects.filter(pk=self.conversation_id).update(last_message_at=self.created_at)
