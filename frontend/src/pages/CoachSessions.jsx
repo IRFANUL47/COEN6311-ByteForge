@@ -3,6 +3,7 @@ import { Card, Button, Modal, Form, Alert, Badge } from 'react-bootstrap';
 import api from '../api/axios';
 
 const DEFAULT_DURATION_MINS = 30;
+const COLLAPSE_THRESHOLD = 4;
 
 const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -20,11 +21,7 @@ const formatDT = (dt) => {
 
 const formatTimeOnly = (dt) => {
   if (!dt) return '—';
-  return new Date(dt).toLocaleTimeString('en-US', {
-    timeZone: userTZ,
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  return new Date(dt).toLocaleTimeString('en-US', { timeZone: userTZ, hour: 'numeric', minute: '2-digit' });
 };
 
 const cardStyle = { border: '1.5px solid #e4dcdc', borderRadius: '10px' };
@@ -36,7 +33,6 @@ const statusColor = {
   REJECTED: 'danger',
   CANCELLED: 'secondary',
 };
-
 const statusLabel = {
   PENDING: 'Pending',
   APPROVED: 'Approved',
@@ -57,6 +53,7 @@ function CoachSessions() {
   const [slotEndTime, setSlotEndTime] = useState('');
   const [slotError, setSlotError] = useState('');
   const [slotLoading, setSlotLoading] = useState(false);
+  const [slotsExpanded, setSlotsExpanded] = useState(false);
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectingBooking, setRejectingBooking] = useState(null);
@@ -64,6 +61,9 @@ function CoachSessions() {
   const [rejectLoading, setRejectLoading] = useState(false);
 
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [bookingSearch, setBookingSearch] = useState('');
+  const [bookingsExpanded, setBookingsExpanded] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     fetchSlots();
@@ -92,36 +92,27 @@ function CoachSessions() {
     setSlotStartTime(value);
     if (value && slotDate) {
       const start = new Date(`${slotDate}T${value}`);
-      const maxEnd = new Date(start.getTime() + DEFAULT_DURATION_MINS * 60 * 1000);
-      const hh = String(maxEnd.getHours()).padStart(2, '0');
-      const mm = String(maxEnd.getMinutes()).padStart(2, '0');
-      setSlotEndTime(`${hh}:${mm}`);
+      const end = new Date(start.getTime() + DEFAULT_DURATION_MINS * 60 * 1000);
+      setSlotEndTime(`${String(end.getHours()).padStart(2, '0')}:${String(end.getMinutes()).padStart(2, '0')}`);
     }
   };
 
   const handleAddSlot = async (e) => {
     e.preventDefault();
     setSlotError('');
-
     if (!slotDate || !slotStartTime || !slotEndTime) {
       setSlotError('Please fill in date, start time, and end time.');
       return;
     }
-
     const startDT = new Date(`${slotDate}T${slotStartTime}`);
     const endDT = new Date(`${slotDate}T${slotEndTime}`);
-
     if (endDT <= startDT) {
       setSlotError('End time must be after start time.');
       return;
     }
-
     setSlotLoading(true);
     try {
-      await api.post('/availability/create/', {
-        start_time: startDT.toISOString(),
-        end_time: endDT.toISOString(),
-      });
+      await api.post('/availability/create/', { start_time: startDT.toISOString(), end_time: endDT.toISOString() });
       setShowAddSlot(false);
       setSlotDate('');
       setSlotStartTime('');
@@ -184,13 +175,30 @@ function CoachSessions() {
     }
   };
 
-  const activeBookings = bookings.filter((b) => !['CANCELLED', 'REJECTED'].includes(b.status));
+  // ── Booking sorting: pending first, then by slot_start ascending ──────────
+  const activeBookings = bookings
+    .filter((b) => !['CANCELLED', 'REJECTED'].includes(b.status))
+    .filter((b) => statusFilter === 'ALL' || b.status === statusFilter)
+    .filter(
+      (b) =>
+        !bookingSearch ||
+        b.student_name?.toLowerCase().includes(bookingSearch.toLowerCase()) ||
+        b.student_email?.toLowerCase().includes(bookingSearch.toLowerCase()),
+    )
+    .sort((a, b) => {
+      const isPendingA = a.status === 'PENDING' || a.status === 'PENDING_ADMIN';
+      const isPendingB = b.status === 'PENDING' || b.status === 'PENDING_ADMIN';
+      if (isPendingA && !isPendingB) return -1;
+      if (!isPendingA && isPendingB) return 1;
+      return new Date(a.slot_start) - new Date(b.slot_start);
+    });
+
   const archivedBookings = bookings
     .filter((b) => b.status === 'CANCELLED')
     .sort((a, b) => new Date(a.slot_start) - new Date(b.slot_start));
-  const [showArchived, setShowArchived] = useState(false);
 
-  const filteredActive = activeBookings.filter((b) => statusFilter === 'ALL' || b.status === statusFilter);
+  const visibleSlots = slotsExpanded ? slots : slots.slice(0, COLLAPSE_THRESHOLD);
+  const visibleBookings = bookingsExpanded ? activeBookings : activeBookings.slice(0, COLLAPSE_THRESHOLD);
 
   return (
     <div style={{ padding: '2rem 2.5rem', fontFamily: 'var(--cu-font-body)' }}>
@@ -231,44 +239,65 @@ function CoachSessions() {
           {slots.length === 0 ? (
             <p style={{ color: '#aaa', fontSize: '0.88rem' }}>No slots added yet.</p>
           ) : (
-            <div className='d-flex flex-column gap-2'>
-              {slots.map((slot) => (
-                <div
-                  key={slot.id}
+            <>
+              <div className='d-flex flex-column gap-2'>
+                {visibleSlots.map((slot) => (
+                  <div
+                    key={slot.id}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      background: '#fdf8f8',
+                      borderRadius: '8px',
+                      border: '1px solid #f0eaea',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div>
+                      <p style={{ fontWeight: 500, marginBottom: '0.1rem', fontSize: '0.88rem', color: '#1a1a1a' }}>
+                        {formatDT(slot.start_time)}
+                      </p>
+                      <p style={{ fontSize: '0.78rem', color: '#888', marginBottom: 0 }}>
+                        Until {formatTimeOnly(slot.end_time)}
+                      </p>
+                    </div>
+                    <div className='d-flex align-items-center gap-2'>
+                      <Badge bg={slot.is_booked ? 'warning' : 'success'}>
+                        {slot.is_booked ? 'Booked' : 'Available'}
+                      </Badge>
+                      {!slot.is_booked && (
+                        <Button
+                          variant='outline-danger'
+                          size='sm'
+                          style={{ fontSize: '0.75rem' }}
+                          onClick={() => handleDeleteSlot(slot.id)}
+                        >
+                          Delete
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {slots.length > COLLAPSE_THRESHOLD && (
+                <button
+                  onClick={() => setSlotsExpanded((v) => !v)}
                   style={{
-                    padding: '0.75rem 1rem',
-                    background: '#fdf8f8',
-                    borderRadius: '8px',
-                    border: '1px solid #f0eaea',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '0.82rem',
+                    color: '#912338',
+                    cursor: 'pointer',
+                    padding: 0,
+                    fontWeight: 500,
+                    marginTop: '0.5rem',
                   }}
                 >
-                  <div>
-                    <p style={{ fontWeight: 500, marginBottom: '0.1rem', fontSize: '0.88rem', color: '#1a1a1a' }}>
-                      {formatDT(slot.start_time)}
-                    </p>
-                    <p style={{ fontSize: '0.78rem', color: '#888', marginBottom: 0 }}>
-                      Until {formatTimeOnly(slot.end_time)}
-                    </p>
-                  </div>
-                  <div className='d-flex align-items-center gap-2'>
-                    <Badge bg={slot.is_booked ? 'warning' : 'success'}>{slot.is_booked ? 'Booked' : 'Available'}</Badge>
-                    {!slot.is_booked && (
-                      <Button
-                        variant='outline-danger'
-                        size='sm'
-                        style={{ fontSize: '0.75rem' }}
-                        onClick={() => handleDeleteSlot(slot.id)}
-                      >
-                        Delete
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                  {slotsExpanded ? '▾ Show less' : `▸ Show ${slots.length - COLLAPSE_THRESHOLD} more`}
+                </button>
+              )}
+            </>
           )}
         </Card.Body>
       </Card>
@@ -306,65 +335,103 @@ function CoachSessions() {
               ))}
             </div>
           </div>
-          {filteredActive.length === 0 ? (
+
+          {/* Search */}
+          <Form.Control
+            type='text'
+            className='cu-form-input mb-3'
+            placeholder='Search by student name or email...'
+            value={bookingSearch}
+            onChange={(e) => {
+              setBookingSearch(e.target.value);
+              setBookingsExpanded(false);
+            }}
+            style={{ fontSize: '0.88rem', maxWidth: 320 }}
+          />
+
+          {activeBookings.length === 0 ? (
             <p style={{ color: '#aaa', fontSize: '0.88rem' }}>No bookings found.</p>
           ) : (
-            <div className='d-flex flex-column gap-3'>
-              {filteredActive.map((b) => (
-                <div
-                  key={b.id}
-                  style={{
-                    padding: '0.75rem 1rem',
-                    background: '#fdf8f8',
-                    borderRadius: '8px',
-                    border: '1px solid #f0eaea',
-                  }}
-                >
-                  <div className='d-flex justify-content-between align-items-start'>
-                    <div>
-                      <p style={{ fontWeight: 600, marginBottom: '0.2rem', fontSize: '0.9rem', color: '#1a1a1a' }}>
-                        {b.student_name}
-                      </p>
-                      <p style={{ fontSize: '0.82rem', color: '#888', marginBottom: '0.2rem' }}>
-                        {formatDT(b.slot_start)} → {formatTimeOnly(b.slot_end)}
-                      </p>
-                      {b.rejection_note && (
-                        <p style={{ fontSize: '0.78rem', color: '#912338', marginBottom: 0 }}>
-                          Rejection reason: {b.rejection_note}
+            <>
+              <div className='d-flex flex-column gap-3'>
+                {visibleBookings.map((b) => (
+                  <div
+                    key={b.id}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      background: '#fdf8f8',
+                      borderRadius: '8px',
+                      border: '1px solid #f0eaea',
+                    }}
+                  >
+                    <div className='d-flex justify-content-between align-items-start'>
+                      <div>
+                        <p style={{ fontWeight: 600, marginBottom: '0.1rem', fontSize: '0.9rem', color: '#1a1a1a' }}>
+                          {b.student_name}
                         </p>
-                      )}
-                    </div>
-                    <div className='d-flex align-items-center gap-2'>
-                      <Badge bg={statusColor[b.status]}>{statusLabel[b.status]}</Badge>
-                      {b.status === 'PENDING' && (
-                        <>
-                          <Button
-                            className='cu-btn-submit'
-                            size='sm'
-                            style={{ fontSize: '0.75rem' }}
-                            onClick={() => handleApprove(b.id)}
-                          >
-                            Approve
-                          </Button>
-                          <Button
-                            variant='outline-danger'
-                            size='sm'
-                            style={{ fontSize: '0.75rem' }}
-                            onClick={() => {
-                              setRejectingBooking(b.id);
-                              setRejectionNote('');
-                              setShowRejectModal(true);
-                            }}
-                          >
-                            Reject
-                          </Button>
-                        </>
-                      )}
+                        {b.student_email && (
+                          <p style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '0.2rem' }}>
+                            {b.student_email}
+                          </p>
+                        )}
+                        <p style={{ fontSize: '0.82rem', color: '#888', marginBottom: '0.2rem' }}>
+                          {formatDT(b.slot_start)} → {formatTimeOnly(b.slot_end)}
+                        </p>
+                        {b.rejection_note && (
+                          <p style={{ fontSize: '0.78rem', color: '#912338', marginBottom: 0 }}>
+                            Rejection reason: {b.rejection_note}
+                          </p>
+                        )}
+                      </div>
+                      <div className='d-flex align-items-center gap-2'>
+                        <Badge bg={statusColor[b.status]}>{statusLabel[b.status]}</Badge>
+                        {b.status === 'PENDING' && (
+                          <>
+                            <Button
+                              className='cu-btn-submit'
+                              size='sm'
+                              style={{ fontSize: '0.75rem' }}
+                              onClick={() => handleApprove(b.id)}
+                            >
+                              Approve
+                            </Button>
+                            <Button
+                              variant='outline-danger'
+                              size='sm'
+                              style={{ fontSize: '0.75rem' }}
+                              onClick={() => {
+                                setRejectingBooking(b.id);
+                                setRejectionNote('');
+                                setShowRejectModal(true);
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+              {activeBookings.length > COLLAPSE_THRESHOLD && (
+                <button
+                  onClick={() => setBookingsExpanded((v) => !v)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    fontSize: '0.82rem',
+                    color: '#912338',
+                    cursor: 'pointer',
+                    padding: 0,
+                    fontWeight: 500,
+                    marginTop: '0.5rem',
+                  }}
+                >
+                  {bookingsExpanded ? '▾ Show less' : `▸ Show ${activeBookings.length - COLLAPSE_THRESHOLD} more`}
+                </button>
+              )}
+            </>
           )}
         </Card.Body>
       </Card>
@@ -401,17 +468,15 @@ function CoachSessions() {
                 >
                   <div className='d-flex justify-content-between align-items-start'>
                     <div>
-                      <p style={{ fontWeight: 500, marginBottom: '0.2rem', fontSize: '0.88rem', color: '#555' }}>
+                      <p style={{ fontWeight: 500, marginBottom: '0.1rem', fontSize: '0.88rem', color: '#555' }}>
                         {b.student_name}
                       </p>
+                      {b.student_email && (
+                        <p style={{ fontSize: '0.75rem', color: '#bbb', marginBottom: '0.2rem' }}>{b.student_email}</p>
+                      )}
                       <p style={{ fontSize: '0.78rem', color: '#aaa', marginBottom: 0 }}>
                         {formatDT(b.slot_start)} → {formatTimeOnly(b.slot_end)}
                       </p>
-                      {b.rejection_note && (
-                        <p style={{ fontSize: '0.75rem', color: '#912338', marginTop: '0.25rem', marginBottom: 0 }}>
-                          Reason: {b.rejection_note}
-                        </p>
-                      )}
                     </div>
                     <Badge bg={statusColor[b.status]}>{statusLabel[b.status]}</Badge>
                   </div>
@@ -459,7 +524,7 @@ function CoachSessions() {
                 onChange={(e) => handleStartTimeChange(e.target.value)}
               />
             </Form.Group>
-            <Form.Group className='mb-1'>
+            <Form.Group className='mb-4'>
               <Form.Label className='cu-form-label'>End Time</Form.Label>
               <Form.Control
                 type='time'
@@ -469,8 +534,6 @@ function CoachSessions() {
                 onChange={(e) => setSlotEndTime(e.target.value)}
               />
             </Form.Group>
-            <br />
-
             <Button type='submit' className='cu-btn-submit w-100' disabled={slotLoading}>
               {slotLoading ? 'Adding...' : 'Add Slot'}
             </Button>
