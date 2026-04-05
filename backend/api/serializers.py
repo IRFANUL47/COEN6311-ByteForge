@@ -474,13 +474,14 @@ class BookingRequestSerializer(serializers.ModelSerializer):
     """Read serializer — full detail."""
     coach_name   = serializers.SerializerMethodField(read_only=True)
     student_name = serializers.SerializerMethodField(read_only=True)
+    student_email = serializers.SerializerMethodField(read_only=True)
     slot_start   = serializers.DateTimeField(source="slot.start_time", read_only=True)
     slot_end     = serializers.DateTimeField(source="slot.end_time",   read_only=True)
 
     class Meta:
         model  = BookingRequest
         fields = (
-            "id", "student", "student_name",
+            "id", "student", "student_name", "student_email",
             "coach", "coach_name",
             "slot", "slot_start", "slot_end",
             "status", "rejection_note",
@@ -494,7 +495,9 @@ class BookingRequestSerializer(serializers.ModelSerializer):
     def get_student_name(self, obj):
         return f"{obj.student.first_name} {obj.student.last_name}".strip()
 
-
+    def get_student_email(self, obj):  # ← ADD THIS METHOD
+        return obj.student.email or ""
+    
 class BookingRequestCreateSerializer(serializers.ModelSerializer):
     """Write serializer — student only provides the slot id."""
     class Meta:

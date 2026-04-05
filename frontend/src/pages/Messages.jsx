@@ -3,12 +3,8 @@ import { Card, Button, Modal, Alert, Form } from 'react-bootstrap';
 import api from '../api/axios';
 import { useAuth } from '../context/auth/useAuth';
 
-// ─── constants ───────────────────────────────────────────────────────────────
-
 const cardStyle = { border: '1.5px solid #e4dcdc', borderRadius: '10px' };
 const userTZ = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-// ─── helpers ─────────────────────────────────────────────────────────────────
 
 const formatTime = (dt) => {
   if (!dt) return '';
@@ -37,7 +33,6 @@ const formatConvTime = (dt) => {
   return d.toLocaleDateString('en-US', { timeZone: userTZ, month: 'short', day: 'numeric' });
 };
 
-// ConversationSerializer returns other_participant directly
 const getOtherParticipant = (conv) => conv?.other_participant ?? null;
 
 const getDisplayName = (person) => {
@@ -48,8 +43,10 @@ const getDisplayName = (person) => {
 
 // ─── New Conversation Modal (coach only) ─────────────────────────────────────
 
-function NewConversationModal({ onClose, onStart }) {
+function NewConversationModal({ onClose, onStart, existingParticipantIds }) {
   const [students, setStudents] = useState([]);
+  const [filtered, setFiltered] = useState([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -57,16 +54,19 @@ function NewConversationModal({ onClose, onStart }) {
     const load = async () => {
       try {
         const res = await api.get('/bookings/');
-        // Only students with an APPROVED booking satisfy IsAllowedToMessage
         const seen = new Set();
         const unique = [];
         for (const b of res.data) {
           if (b.status === 'APPROVED' && !seen.has(b.student)) {
             seen.add(b.student);
-            unique.push({ id: b.student, name: b.student_name });
+            // Only show students without an existing conversation
+            if (!existingParticipantIds.has(b.student)) {
+              unique.push({ id: b.student, name: b.student_name });
+            }
           }
         }
         setStudents(unique);
+        setFiltered(unique);
       } catch {
         setError('Failed to load students.');
       } finally {
@@ -76,6 +76,11 @@ function NewConversationModal({ onClose, onStart }) {
     load();
   }, []);
 
+  const handleSearch = (v) => {
+    setSearch(v);
+    setFiltered(students.filter((s) => s.name.toLowerCase().includes(v.toLowerCase())));
+  };
+
   return (
     <Modal show onHide={onClose} centered>
       <Modal.Header closeButton style={{ borderBottom: '1px solid #f0eaea' }}>
@@ -83,7 +88,7 @@ function NewConversationModal({ onClose, onStart }) {
       </Modal.Header>
       <Modal.Body className='p-4'>
         <p style={{ fontSize: '0.82rem', color: '#888', marginBottom: '1rem' }}>
-          You can message students who have an approved booking with you.
+          Students with an approved booking who you haven't messaged yet.
         </p>
         {error && (
           <Alert variant='danger' className='py-2 mb-3' style={{ fontSize: '0.88rem' }}>
@@ -94,53 +99,67 @@ function NewConversationModal({ onClose, onStart }) {
           <p style={{ color: '#aaa', fontSize: '0.88rem' }}>Loading...</p>
         ) : students.length === 0 ? (
           <p style={{ color: '#aaa', fontSize: '0.88rem' }}>
-            No eligible students. Approve a booking first before messaging a student.
+            No new students to message. All eligible students already have conversations.
           </p>
         ) : (
-          <div className='d-flex flex-column gap-2'>
-            {students.map((s) => (
-              <div
-                key={s.id}
-                onClick={() => onStart(s)}
-                style={{
-                  padding: '0.75rem 1rem',
-                  background: '#fdf8f8',
-                  borderRadius: '8px',
-                  border: '1px solid #f0eaea',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.75rem',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = '#f5eeee';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = '#fdf8f8';
-                }}
-              >
-                <div
-                  style={{
-                    width: 34,
-                    height: 34,
-                    borderRadius: '50%',
-                    background: '#f5eeee',
-                    color: '#912338',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontFamily: 'var(--cu-font-brand)',
-                    fontWeight: 700,
-                    fontSize: '1rem',
-                    flexShrink: 0,
-                  }}
-                >
-                  {s.name.charAt(0).toUpperCase()}
-                </div>
-                <span style={{ fontWeight: 500, fontSize: '0.88rem', color: '#1a1a1a' }}>{s.name}</span>
-              </div>
-            ))}
-          </div>
+          <>
+            <Form.Control
+              type='text'
+              className='cu-form-input mb-3'
+              placeholder='Search by name...'
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              style={{ fontSize: '0.88rem' }}
+            />
+            <div className='d-flex flex-column gap-2'>
+              {filtered.length === 0 ? (
+                <p style={{ color: '#aaa', fontSize: '0.88rem' }}>No results.</p>
+              ) : (
+                filtered.map((s) => (
+                  <div
+                    key={s.id}
+                    onClick={() => onStart(s)}
+                    style={{
+                      padding: '0.75rem 1rem',
+                      background: '#fdf8f8',
+                      borderRadius: '8px',
+                      border: '1px solid #f0eaea',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      cursor: 'pointer',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = '#f5eeee';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = '#fdf8f8';
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: '50%',
+                        background: '#f5eeee',
+                        color: '#912338',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontFamily: 'var(--cu-font-brand)',
+                        fontWeight: 700,
+                        fontSize: '1rem',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {s.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span style={{ fontWeight: 500, fontSize: '0.88rem', color: '#1a1a1a' }}>{s.name}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </>
         )}
       </Modal.Body>
     </Modal>
@@ -154,6 +173,7 @@ function Messages() {
   const isCoach = user?.role === 'COACH';
 
   const [conversations, setConversations] = useState([]);
+  const [convSearch, setConvSearch] = useState('');
   const [activeConvId, setActiveConvId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -162,9 +182,11 @@ function Messages() {
   const [loadingMsgs, setLoadingMsgs] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   const [showNewConv, setShowNewConv] = useState(false);
+
+  // track prev unread count for notification
+  const prevUnreadRef = useRef({});
 
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -178,11 +200,26 @@ function Messages() {
       if (!silent) setLoadingConvs(true);
       try {
         const res = await api.get('/conversations/');
-        setConversations(res.data);
+        const convs = res.data;
 
-        // Students: auto-open their only conversation on first load
-        if (!isCoach && !silent && res.data.length > 0) {
-          openConversation(res.data[0].id);
+        // Notify on new unread messages from others
+        convs.forEach((c) => {
+          const prev = prevUnreadRef.current[c.id] ?? 0;
+          const curr = c.unread_count ?? 0;
+          if (curr > prev && c.id !== activeConvId) {
+            const other = getOtherParticipant(c);
+            const name = other?.name || '—';
+            if (Notification.permission === 'granted') {
+              new Notification(`New message from ${name}`, { body: c.last_message_preview || '' });
+            }
+          }
+          prevUnreadRef.current[c.id] = curr;
+        });
+
+        setConversations(convs);
+
+        if (!isCoach && !silent && convs.length > 0 && !activeConvId) {
+          openConversation(convs[0].id);
         }
       } catch {
         if (!silent) setError('Failed to load conversations.');
@@ -190,16 +227,18 @@ function Messages() {
         if (!silent) setLoadingConvs(false);
       }
     },
-    [isCoach],
+    [isCoach, activeConvId],
   ); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    // Request notification permission on mount
+    if (Notification.permission === 'default') Notification.requestPermission();
     fetchConversations();
     pollConvRef.current = setInterval(() => fetchConversations(true), 10000);
     return () => clearInterval(pollConvRef.current);
   }, [fetchConversations]);
 
-  // ── poll messages for open conversation ─────────────────────────────────
+  // ── poll messages ────────────────────────────────────────────────────────
 
   const fetchMessages = useCallback(async (convId, silent = false) => {
     if (!convId) return;
@@ -233,14 +272,13 @@ function Messages() {
       setMessages(res.data);
       await api.patch(`/conversations/${convId}/messages/read/`);
       setConversations((prev) => prev.map((c) => (c.id === convId ? { ...c, unread_count: 0 } : c)));
+      prevUnreadRef.current[convId] = 0;
     } catch {
       setError('Failed to load messages.');
     } finally {
       setLoadingMsgs(false);
     }
   }, []);
-
-  // ── scroll to bottom on new messages ────────────────────────────────────
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -290,35 +328,74 @@ function Messages() {
     }
   };
 
-  // ── start new conversation (coach only) ─────────────────────────────────
+  // ── start new conversation (no hello message, no success toast) ──────────
+
+  const existingParticipantIds = new Set(conversations.map((c) => getOtherParticipant(c)?.id).filter(Boolean));
 
   const handleStartConversation = async (student) => {
     setShowNewConv(false);
+    // Immediately open a new empty conversation by sending a real first message the user will type
+    // Instead of auto-sending "Hello", just open the chat panel for that student
+    // We need to either find existing conv or create one via first message
+    // Check if conversation already exists (shouldn't since we filtered, but safety)
+    const existing = conversations.find((c) => getOtherParticipant(c)?.id === student.id);
+    if (existing) {
+      openConversation(existing.id);
+      return;
+    }
+    // No conversation yet — set a pending recipient so the user can type their first message
+    setPendingRecipient(student);
+  };
+
+  // ── pending recipient (no conversation yet) ──────────────────────────────
+
+  const [pendingRecipient, setPendingRecipient] = useState(null);
+
+  const handleSendToPending = async () => {
+    if (!input.trim() || sending || !pendingRecipient) return;
+    const text = input.trim();
+    setInput('');
     setSending(true);
-    setError('');
     try {
-      await api.post('/messages/', { recipient_id: student.id, content: '👋 Hello!' });
+      await api.post('/messages/', { recipient_id: pendingRecipient.id, content: text });
       const res = await api.get('/conversations/');
       setConversations(res.data);
-      const found = res.data.find((c) => c.other_participant?.id === student.id);
-      if (found) openConversation(found.id);
-      setSuccess(`Conversation with ${student.name} started.`);
+      const found = res.data.find((c) => getOtherParticipant(c)?.id === pendingRecipient.id);
+      if (found) {
+        setPendingRecipient(null);
+        openConversation(found.id);
+      }
     } catch (err) {
-      setError(err.response?.data?.detail || 'Could not start conversation.');
+      setError(err.response?.data?.detail || 'Could not send message.');
     } finally {
       setSending(false);
+      inputRef.current?.focus();
     }
   };
+
+  const handleKeyPending = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendToPending();
+    }
+  };
+
+  // ── filtered conversations ───────────────────────────────────────────────
+
+  const filteredConvs = conversations.filter((c) => {
+    if (!convSearch) return true;
+    const name = getOtherParticipant(c)?.name || '';
+    return name.toLowerCase().includes(convSearch.toLowerCase());
+  });
 
   // ─────────────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ padding: '2rem 2.5rem', fontFamily: 'var(--cu-font-body)' }}>
+    <div style={{ padding: '2rem 2.5rem', fontFamily: 'var(--cu-font-body)', paddingBottom: '5rem' }}>
       <div className='d-flex align-items-center justify-content-between mb-1'>
         <h2 className='cu-auth-title mb-0' style={{ fontSize: '2rem' }}>
           Messages
         </h2>
-        {/* New conversation button — coaches only */}
         {isCoach && (
           <Button className='cu-btn-submit' onClick={() => setShowNewConv(true)}>
             + New Conversation
@@ -340,139 +417,163 @@ function Messages() {
           {error}
         </Alert>
       )}
-      {success && (
-        <Alert variant='success' className='py-2 mb-3' style={{ fontSize: '0.88rem' }}>
-          {success}
-        </Alert>
-      )}
 
       <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'flex-start' }}>
         {/* ── Left: conversation list ── */}
-        <Card className='cu-auth-card' style={{ ...cardStyle, width: 300, minWidth: 300, flexShrink: 0 }}>
-          <Card.Body className='p-0'>
-            <div style={{ padding: '0.85rem 1.1rem', borderBottom: '1px solid #f0eaea' }}>
-              <h5 className='cu-auth-title mb-0' style={{ fontSize: '1.1rem' }}>
+        <Card
+          className='cu-auth-card'
+          style={{
+            ...cardStyle,
+            width: 300,
+            minWidth: 300,
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: 'calc(100vh - 220px)',
+          }}
+        >
+          <Card.Body className='p-0' style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '0.85rem 1.1rem', borderBottom: '1px solid #f0eaea', flexShrink: 0 }}>
+              <h5 className='cu-auth-title mb-2' style={{ fontSize: '1.1rem' }}>
                 Conversations
               </h5>
+              {isCoach && (
+                <Form.Control
+                  type='text'
+                  className='cu-form-input'
+                  placeholder='Search by name...'
+                  value={convSearch}
+                  onChange={(e) => setConvSearch(e.target.value)}
+                  style={{ fontSize: '0.82rem' }}
+                />
+              )}
             </div>
 
-            {loadingConvs ? (
-              <p style={{ padding: '1.25rem', color: '#aaa', fontSize: '0.88rem', margin: 0 }}>Loading...</p>
-            ) : conversations.length === 0 ? (
-              <p style={{ padding: '1.25rem', color: '#aaa', fontSize: '0.88rem', margin: 0 }}>No conversations yet.</p>
-            ) : (
-              conversations.map((conv) => {
-                const other = getOtherParticipant(conv);
-                const name = other?.name || getDisplayName(other);
-                const preview = conv.last_message_preview ?? '';
-                const unread = conv.unread_count ?? 0;
-                const isActive = conv.id === activeConvId;
+            {/* Scrollable conversation list */}
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              {loadingConvs ? (
+                <p style={{ padding: '1.25rem', color: '#aaa', fontSize: '0.88rem', margin: 0 }}>Loading...</p>
+              ) : filteredConvs.length === 0 ? (
+                <p style={{ padding: '1.25rem', color: '#aaa', fontSize: '0.88rem', margin: 0 }}>
+                  No conversations yet.
+                </p>
+              ) : (
+                filteredConvs.map((conv) => {
+                  const other = getOtherParticipant(conv);
+                  const name = other?.name || getDisplayName(other);
+                  const preview = conv.last_message_preview ?? '';
+                  const unread = conv.unread_count ?? 0;
+                  const isActive = conv.id === activeConvId;
 
-                return (
-                  <div
-                    key={conv.id}
-                    onClick={() => openConversation(conv.id)}
-                    style={{
-                      padding: '0.75rem 1rem',
-                      background: isActive ? '#f5eeee' : 'transparent',
-                      borderBottom: '1px solid #f9f5f5',
-                      borderLeft: `3px solid ${isActive ? '#912338' : 'transparent'}`,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      cursor: 'pointer',
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) e.currentTarget.style.background = '#fdf8f8';
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) e.currentTarget.style.background = 'transparent';
-                    }}
-                  >
+                  return (
                     <div
+                      key={conv.id}
+                      onClick={() => {
+                        setPendingRecipient(null);
+                        openConversation(conv.id);
+                      }}
                       style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: '50%',
-                        background: isActive ? '#912338' : '#f5eeee',
-                        color: isActive ? '#fff' : '#912338',
+                        padding: '0.75rem 1rem',
+                        background: isActive ? '#f5eeee' : 'transparent',
+                        borderBottom: '1px solid #f9f5f5',
+                        borderLeft: `3px solid ${isActive ? '#912338' : 'transparent'}`,
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        fontFamily: 'var(--cu-font-brand)',
-                        fontWeight: 700,
-                        fontSize: '1rem',
-                        flexShrink: 0,
-                        transition: 'background 0.15s, color 0.15s',
+                        gap: '0.75rem',
+                        cursor: 'pointer',
+                        transition: 'background 0.15s',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) e.currentTarget.style.background = '#fdf8f8';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) e.currentTarget.style.background = 'transparent';
                       }}
                     >
-                      {(name || '?').charAt(0).toUpperCase()}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                        <span
-                          style={{
-                            fontWeight: unread > 0 ? 600 : 400,
-                            fontSize: '0.88rem',
-                            color: '#1a1a1a',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '62%',
-                          }}
-                        >
-                          {name}
-                        </span>
-                        <span style={{ fontSize: '0.7rem', color: '#bbb', flexShrink: 0 }}>
-                          {formatConvTime(conv.last_message_at)}
-                        </span>
-                      </div>
                       <div
                         style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: '50%',
+                          background: isActive ? '#912338' : '#f5eeee',
+                          color: isActive ? '#fff' : '#912338',
                           display: 'flex',
-                          justifyContent: 'space-between',
                           alignItems: 'center',
-                          marginTop: '0.1rem',
+                          justifyContent: 'center',
+                          fontFamily: 'var(--cu-font-brand)',
+                          fontWeight: 700,
+                          fontSize: '1rem',
+                          flexShrink: 0,
+                          transition: 'background 0.15s, color 0.15s',
                         }}
                       >
-                        <span
-                          style={{
-                            fontSize: '0.78rem',
-                            color: unread > 0 ? '#555' : '#aaa',
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            maxWidth: '80%',
-                          }}
-                        >
-                          {preview || <em>No messages yet</em>}
-                        </span>
-                        {unread > 0 && (
+                        {(name || '?').charAt(0).toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                           <span
                             style={{
-                              background: '#912338',
-                              color: '#fff',
-                              borderRadius: '50%',
-                              width: 18,
-                              height: 18,
-                              fontSize: '0.62rem',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 700,
-                              flexShrink: 0,
+                              fontWeight: unread > 0 ? 600 : 400,
+                              fontSize: '0.88rem',
+                              color: '#1a1a1a',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '62%',
                             }}
                           >
-                            {unread > 9 ? '9+' : unread}
+                            {name}
                           </span>
-                        )}
+                          <span style={{ fontSize: '0.7rem', color: '#bbb', flexShrink: 0 }}>
+                            {formatConvTime(conv.last_message_at)}
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginTop: '0.1rem',
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: '0.78rem',
+                              color: unread > 0 ? '#555' : '#aaa',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '80%',
+                            }}
+                          >
+                            {preview || <em>No messages yet</em>}
+                          </span>
+                          {unread > 0 && (
+                            <span
+                              style={{
+                                background: '#912338',
+                                color: '#fff',
+                                borderRadius: '50%',
+                                width: 18,
+                                height: 18,
+                                fontSize: '0.62rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: 700,
+                                flexShrink: 0,
+                              }}
+                            >
+                              {unread > 9 ? '9+' : unread}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
+                  );
+                })
+              )}
+            </div>
           </Card.Body>
         </Card>
 
@@ -490,7 +591,7 @@ function Messages() {
           }}
         >
           <Card.Body className='p-0' style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            {activeConvId && activeConv ? (
+            {(activeConvId && activeConv) || pendingRecipient ? (
               <>
                 {/* Chat header */}
                 <div
@@ -519,14 +620,18 @@ function Messages() {
                       flexShrink: 0,
                     }}
                   >
-                    {(recipient?.name || '?').charAt(0).toUpperCase()}
+                    {(pendingRecipient?.name || recipient?.name || '?').charAt(0).toUpperCase()}
                   </div>
                   <div>
                     <p style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem', color: '#1a1a1a' }}>
-                      {recipient?.name || getDisplayName(recipient)}
+                      {pendingRecipient?.name || recipient?.name || getDisplayName(recipient)}
                     </p>
                     <p style={{ margin: 0, fontSize: '0.72rem', color: '#aaa', textTransform: 'capitalize' }}>
-                      {recipient?.role ? recipient.role.charAt(0) + recipient.role.slice(1).toLowerCase() : ''}
+                      {pendingRecipient
+                        ? 'Student'
+                        : recipient?.role
+                          ? recipient.role.charAt(0) + recipient.role.slice(1).toLowerCase()
+                          : ''}
                     </p>
                   </div>
                 </div>
@@ -543,7 +648,11 @@ function Messages() {
                     background: '#fdfbfb',
                   }}
                 >
-                  {loadingMsgs ? (
+                  {pendingRecipient ? (
+                    <p style={{ color: '#aaa', fontSize: '0.88rem', textAlign: 'center', marginTop: '1rem' }}>
+                      Send your first message to start the conversation.
+                    </p>
+                  ) : loadingMsgs ? (
                     <p style={{ color: '#aaa', fontSize: '0.88rem', textAlign: 'center', marginTop: '1rem' }}>
                       Loading messages...
                     </p>
@@ -591,11 +700,6 @@ function Messages() {
                             }}
                           >
                             {formatTime(msg.created_at)}
-                            {isMine && (
-                              <span style={{ marginLeft: 4, color: msg.read ? '#c9a859' : '#ccc' }}>
-                                {msg.read ? '✓✓' : '✓'}
-                              </span>
-                            )}
                           </span>
                         </div>
                       );
@@ -626,7 +730,7 @@ function Messages() {
                       e.target.style.height = 'auto';
                       e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px';
                     }}
-                    onKeyDown={handleKey}
+                    onKeyDown={pendingRecipient ? handleKeyPending : handleKey}
                     placeholder='Write a message… (Enter to send)'
                     disabled={sending}
                     className='cu-form-input'
@@ -642,7 +746,7 @@ function Messages() {
                   <Button
                     className='cu-btn-submit'
                     size='sm'
-                    onClick={handleSend}
+                    onClick={pendingRecipient ? handleSendToPending : handleSend}
                     disabled={sending || !input.trim()}
                     style={{ flexShrink: 0, height: 38, padding: '0 1.1rem' }}
                   >
@@ -683,7 +787,13 @@ function Messages() {
         </Card>
       </div>
 
-      {showNewConv && <NewConversationModal onClose={() => setShowNewConv(false)} onStart={handleStartConversation} />}
+      {showNewConv && (
+        <NewConversationModal
+          onClose={() => setShowNewConv(false)}
+          onStart={handleStartConversation}
+          existingParticipantIds={existingParticipantIds}
+        />
+      )}
     </div>
   );
 }
