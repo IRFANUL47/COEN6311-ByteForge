@@ -515,12 +515,14 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 
 class MessageSerializer(serializers.ModelSerializer):
+    recipient_id = serializers.IntegerField(write_only=True, required=True)
     sender_name = serializers.SerializerMethodField(read_only=True)
+    timestamp = serializers.DateTimeField(source="created_at", read_only=True)
 
     class Meta:
         model = Message
-        fields = ("id", "conversation", "sender", "sender_name", "content", "created_at", "read")
-        read_only_fields = ("id", "sender", "created_at", "sender_name", "conversation")
+        fields = ("id","conversation","sender","sender_name","recipient_id","content","timestamp","read")
+        read_only_fields = ("id", "sender", "sender_name", "conversation", "timestamp")
 
     def get_sender_name(self, obj):
         return f"{obj.sender.first_name} {obj.sender.last_name}".strip()
@@ -534,8 +536,7 @@ class MessageSerializer(serializers.ModelSerializer):
         return text
 
     def validate(self, attrs):
-        # recipient_id comes from payload (initial_data) or context
-        recipient_id = self.initial_data.get("recipient_id") or self.context.get("recipient_id")
+        recipient_id = attrs.get("recipient_id") or self.initial_data.get("recipient_id") or self.context.get("recipient_id")
         request = self.context.get("request")
         user = request.user if request else None
 
@@ -558,7 +559,7 @@ class MessageSerializer(serializers.ModelSerializer):
         except User.DoesNotExist:
             raise serializers.ValidationError({"recipient_id": "Recipient not found."})
 
-        # Student -> Coach: student must be assigned to that coach
+        # Student -> Coach
         if user.role == User.Role.STUDENT:
             if recipient.role != User.Role.COACH:
                 raise serializers.ValidationError({"recipient_id": "Recipient must be a coach."})
@@ -566,7 +567,7 @@ class MessageSerializer(serializers.ModelSerializer):
             if not assigned:
                 raise serializers.ValidationError({"recipient_id": "You may only message your assigned coach."})
 
-        # Coach -> Student: require an APPROVED BookingRequest linking them
+        # Coach -> Student
         elif user.role == User.Role.COACH:
             if recipient.role != User.Role.STUDENT:
                 raise serializers.ValidationError({"recipient_id": "Recipient must be a student."})
@@ -579,15 +580,14 @@ class MessageSerializer(serializers.ModelSerializer):
         else:
             raise serializers.ValidationError({"non_field_errors": "Only students and coaches can send messages."})
 
-        # Save the resolved recipient for create()
         self.context["validated_recipient"] = recipient
         return attrs
 
     def create(self, validated_data):
+        recipient = self.context.get("validated_recipient")
         request = self.context.get("request")
         user = request.user
-        recipient = self.context.get("validated_recipient")
-        # Determine coach & student
+
         if user.role == User.Role.COACH:
             coach = user
             student = recipient
@@ -595,9 +595,7 @@ class MessageSerializer(serializers.ModelSerializer):
             coach = recipient
             student = user
 
-        # Use safe helper to avoid race on conversation creation
         conversation, _ = get_or_create_conversation_safe(Conversation, coach, student)
-
         message = Message.objects.create(conversation=conversation, sender=user, content=validated_data["content"])
         return message
 

@@ -16,7 +16,7 @@ def create_message(request):
     if not serializer.is_valid():
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     msg = serializer.save()
-    return Response(MessageSerializer(msg).data, status=status.HTTP_201_CREATED)
+    return Response(MessageSerializer(msg, context={"request": request}).data, status=status.HTTP_201_CREATED)
 
 
 @api_view(["GET"])
