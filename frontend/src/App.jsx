@@ -5,11 +5,13 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Profile from './pages/Profile';
+import Sessions from './pages/Sessions';
 import Equipment from './pages/Equipment';
 import Dashboard from './pages/Dashboard';
 import NutritionPlans from './pages/NutritionPlans';
 import WorkoutPlans from './pages/WorkoutPlans';
 import ChatWidget from './components/ChatWidget';
+import Messages from './pages/Messages';
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -49,6 +51,23 @@ function App() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path='/sessions'
+          element={
+            <ProtectedRoute>
+              <Sessions />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/messages'
+          element={
+            <ProtectedRoute>
+              <Messages />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path='/profile'
           element={

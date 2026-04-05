@@ -1,0 +1,819 @@
+[
+  {
+    "model": "api.customuser",
+    "pk": 5,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$npQmPE7yeFfq295UjpfHIy$pp4LXXfnAfyqpnb6aHNLSRtNU/Ek0d3MilwFu0dHTLw=",
+      "last_login": "2026-04-03T17:35:07.535Z",
+      "is_superuser": true,
+      "username": "admin",
+      "first_name": "",
+      "last_name": "",
+      "email": "admin@gmail.com",
+      "is_staff": true,
+      "is_active": true,
+      "date_joined": "2026-04-03T17:33:10.781Z",
+      "role": "STUDENT",
+      "concordia_id": "",
+      "is_approved": false,
+      "gender": null,
+      "age": null,
+      "height": null,
+      "weight": null,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "api.customuser",
+    "pk": 6,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$J2J1apC53eTNW8Bo3nefUW$BLk+3+iVmgmeltaBpQuN4Ol2wFT6srr2DPka5b4rZ2s=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "12345",
+      "first_name": "Ronnie",
+      "last_name": "Coleman",
+      "email": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-04-03T17:38:12Z",
+      "role": "COACH",
+      "concordia_id": "12345",
+      "is_approved": true,
+      "gender": "MALE",
+      "age": 30,
+      "height": 180.0,
+      "weight": 135.0,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "api.customuser",
+    "pk": 7,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$xXFseXldVsK3gO9ISYbWB8$BblUYpaxSDNDvUZGwvAZsV8X4gfjVWt3KwywIOpIbh8=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "123456",
+      "first_name": "Arnold",
+      "last_name": "Schwarzenegger",
+      "email": "arnold@gmail.com",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-04-03T17:44:19Z",
+      "role": "COACH",
+      "concordia_id": "123456",
+      "is_approved": true,
+      "gender": "MALE",
+      "age": 28,
+      "height": 185.0,
+      "weight": 109.0,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "api.customuser",
+    "pk": 8,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$sD4XFqdK1EFeIWvbnIRh79$uxCVRZ4WkhYY9ATnNCmyYBRrYnluCr4ydm/RH/PcmvE=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "1234567",
+      "first_name": "Big Ramy",
+      "last_name": ".",
+      "email": "",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-04-03T17:50:51Z",
+      "role": "COACH",
+      "concordia_id": "1234567",
+      "is_approved": true,
+      "gender": "MALE",
+      "age": 25,
+      "height": 180.0,
+      "weight": 104.0,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "api.customuser",
+    "pk": 9,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$dyiEZodF9z5lkLOGbQ14F4$ZD53JIIeDKkAOyTrdcGXPRtRAz6/4P9/acsWKoPPPkc=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "9876",
+      "first_name": "ahmad mohsen",
+      "last_name": ".",
+      "email": "ahmad@gmail.com",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-04-03T17:54:43Z",
+      "role": "STUDENT",
+      "concordia_id": "9876",
+      "is_approved": true,
+      "gender": "MALE",
+      "age": 20,
+      "height": 178.0,
+      "weight": 90.0,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "api.customuser",
+    "pk": 10,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$V6IrqtR0utqwo0xz8z62bv$W8OxeVxSSgaJgoJ671NgI/nJV1B21x7z97jDS9XhHm8=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "98765",
+      "first_name": "samira",
+      "last_name": "khatib",
+      "email": "samira@gmail.com",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-04-03T17:58:18Z",
+      "role": "STUDENT",
+      "concordia_id": "98765",
+      "is_approved": true,
+      "gender": "FEMALE",
+      "age": 21,
+      "height": 166.0,
+      "weight": 56.0,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "api.customuser",
+    "pk": 11,
+    "fields": {
+      "password": "pbkdf2_sha256$1200000$5YiDcpt6sLiUmzCLZSGleP$TaUa3Ai4FOv9Szv0Vn2tEUDDu/UNM5eBkdUQPfCIqao=",
+      "last_login": null,
+      "is_superuser": false,
+      "username": "987654",
+      "first_name": "vladimr",
+      "last_name": "shopoklov",
+      "email": "vladimir@gmail.com",
+      "is_staff": false,
+      "is_active": true,
+      "date_joined": "2026-04-03T18:00:53Z",
+      "role": "STUDENT",
+      "concordia_id": "987654",
+      "is_approved": true,
+      "gender": "MALE",
+      "age": 24,
+      "height": 186.0,
+      "weight": 70.0,
+      "groups": [],
+      "user_permissions": []
+    }
+  },
+  {
+    "model": "api.equipment",
+    "pk": 1,
+    "fields": {
+      "name": "Treadmill",
+      "category": "CARDIO",
+      "quantity": 10
+    }
+  },
+  {
+    "model": "api.equipment",
+    "pk": 2,
+    "fields": {
+      "name": "barbell",
+      "category": "HEAVY",
+      "quantity": 15
+    }
+  },
+  {
+    "model": "api.equipment",
+    "pk": 3,
+    "fields": {
+      "name": "cable tower",
+      "category": "CABLES",
+      "quantity": 6
+    }
+  },
+  {
+    "model": "api.equipment",
+    "pk": 4,
+    "fields": {
+      "name": "Leg Press Machine",
+      "category": "MACHINES",
+      "quantity": 4
+    }
+  },
+  {
+    "model": "api.equipment",
+    "pk": 5,
+    "fields": {
+      "name": "Yoga Mat",
+      "category": "RAW",
+      "quantity": 20
+    }
+  },
+  {
+    "model": "api.dietaryrestriction",
+    "pk": 1,
+    "fields": {
+      "display_name": "Vegan",
+      "key": "vegan",
+      "description": "no animal products"
+    }
+  },
+  {
+    "model": "api.dietaryrestriction",
+    "pk": 2,
+    "fields": {
+      "display_name": "gluten-free",
+      "key": "gluten_free",
+      "description": "no gluten"
+    }
+  },
+  {
+    "model": "api.dietaryrestriction",
+    "pk": 3,
+    "fields": {
+      "display_name": "Lactose Intolerant",
+      "key": "Lactose_Intolerant",
+      "description": "Lactose Intolerant"
+    }
+  },
+  {
+    "model": "api.userdietaryrestriction",
+    "pk": 1,
+    "fields": {
+      "user": 9,
+      "dietary_restriction": 1,
+      "created_at": "2026-04-04T06:41:43.870Z"
+    }
+  },
+  {
+    "model": "api.userdietaryrestriction",
+    "pk": 2,
+    "fields": {
+      "user": 10,
+      "dietary_restriction": 2,
+      "created_at": "2026-04-04T06:42:21.089Z"
+    }
+  },
+  {
+    "model": "api.userdietaryrestriction",
+    "pk": 3,
+    "fields": {
+      "user": 10,
+      "dietary_restriction": 3,
+      "created_at": "2026-04-04T06:42:32.212Z"
+    }
+  },
+  {
+    "model": "api.userdietaryrestriction",
+    "pk": 4,
+    "fields": {
+      "user": 11,
+      "dietary_restriction": 2,
+      "created_at": "2026-04-04T06:42:50.879Z"
+    }
+  },
+  {
+    "model": "api.nutritionplan",
+    "pk": 1,
+    "fields": {
+      "coach": 6,
+      "student": 9,
+      "title": "Muscle Gain Plan",
+      "notes": "High protein diet focused on muscle growth",
+      "plan": null,
+      "calories_target": 3000,
+      "protein_g": 200,
+      "carbs_g": 300,
+      "fats_g": 80,
+      "start_date": null,
+      "end_date": null,
+      "is_active": true,
+      "created_at": "2026-04-04T06:46:32.899Z",
+      "updated_at": "2026-04-04T06:46:32.899Z"
+    }
+  },
+  {
+    "model": "api.nutritionplan",
+    "pk": 2,
+    "fields": {
+      "coach": 7,
+      "student": 10,
+      "title": "Weight Loss Plan",
+      "notes": "Caloric deficit with balanced macros",
+      "plan": null,
+      "calories_target": 1800,
+      "protein_g": 130,
+      "carbs_g": 180,
+      "fats_g": 50,
+      "start_date": null,
+      "end_date": null,
+      "is_active": true,
+      "created_at": "2026-04-04T06:48:01.601Z",
+      "updated_at": "2026-04-04T06:48:01.601Z"
+    }
+  },
+  {
+    "model": "api.nutritionplan",
+    "pk": 3,
+    "fields": {
+      "coach": 8,
+      "student": 11,
+      "title": "Endurance Plan",
+      "notes": "High carb diet for endurance training",
+      "plan": null,
+      "calories_target": 2500,
+      "protein_g": 150,
+      "carbs_g": 350,
+      "fats_g": 60,
+      "start_date": null,
+      "end_date": null,
+      "is_active": true,
+      "created_at": "2026-04-04T06:49:10.138Z",
+      "updated_at": "2026-04-04T06:49:10.138Z"
+    }
+  },
+  {
+    "model": "api.workoutplan",
+    "pk": 1,
+    "fields": {
+      "coach": 6,
+      "student": 9,
+      "title": "Upper Body Strength",
+      "goal": "Build upper body muscle mass",
+      "start_date": "2026-04-01",
+      "end_date": "2026-06-01",
+      "is_active": true,
+      "created_at": "2026-04-04T18:59:34.657Z",
+      "updated_at": "2026-04-04T18:59:34.657Z"
+    }
+  },
+  {
+    "model": "api.workoutplan",
+    "pk": 2,
+    "fields": {
+      "coach": 7,
+      "student": 10,
+      "title": "Full Body Cardio",
+      "goal": "Lose weight and improve cardiovascular endurance",
+      "start_date": "2026-04-01",
+      "end_date": "2026-06-01",
+      "is_active": true,
+      "created_at": "2026-04-04T19:00:10.688Z",
+      "updated_at": "2026-04-04T19:00:10.688Z"
+    }
+  },
+  {
+    "model": "api.workoutplan",
+    "pk": 3,
+    "fields": {
+      "coach": 8,
+      "student": 11,
+      "title": "Powerlifting Program",
+      "goal": "Increase overall strength and power",
+      "start_date": "2026-04-01",
+      "end_date": "2026-06-01",
+      "is_active": true,
+      "created_at": "2026-04-04T19:00:46.442Z",
+      "updated_at": "2026-04-04T19:00:46.442Z"
+    }
+  },
+  {
+    "model": "api.workoutday",
+    "pk": 1,
+    "fields": {
+      "plan": 1,
+      "day_number": 1,
+      "label": "Chest and Triceps",
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.workoutday",
+    "pk": 2,
+    "fields": {
+      "plan": 1,
+      "day_number": 2,
+      "label": "Back and Biceps",
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.workoutday",
+    "pk": 3,
+    "fields": {
+      "plan": 1,
+      "day_number": 3,
+      "label": "Shoulders",
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.workoutday",
+    "pk": 4,
+    "fields": {
+      "plan": 2,
+      "day_number": 1,
+      "label": "Cardio and Core",
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.workoutday",
+    "pk": 5,
+    "fields": {
+      "plan": 2,
+      "day_number": 2,
+      "label": "Lower Body",
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.workoutday",
+    "pk": 6,
+    "fields": {
+      "plan": 2,
+      "day_number": 3,
+      "label": "Full Body Circuit",
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.workoutday",
+    "pk": 7,
+    "fields": {
+      "plan": 3,
+      "day_number": 1,
+      "label": "Bench Press Day",
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.workoutday",
+    "pk": 8,
+    "fields": {
+      "plan": 3,
+      "day_number": 2,
+      "label": "Squats Day",
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.workoutday",
+    "pk": 9,
+    "fields": {
+      "plan": 3,
+      "day_number": 3,
+      "label": "Deadlift Day",
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 1,
+    "fields": {
+      "workout_day": 1,
+      "name": "Bench Press",
+      "sets": 4,
+      "reps": 10,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 2,
+    "fields": {
+      "workout_day": 1,
+      "name": "incline dumbell press",
+      "sets": 3,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 3,
+    "fields": {
+      "workout_day": 1,
+      "name": "pec dec machine",
+      "sets": 4,
+      "reps": 8,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 4,
+    "fields": {
+      "workout_day": 1,
+      "name": "Tricep Pushdown",
+      "sets": 4,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 5,
+    "fields": {
+      "workout_day": 2,
+      "name": "Lat Pulldown",
+      "sets": 4,
+      "reps": 10,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 6,
+    "fields": {
+      "workout_day": 2,
+      "name": "Barbell Row",
+      "sets": 3,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 7,
+    "fields": {
+      "workout_day": 2,
+      "name": "Bicep Curls",
+      "sets": 3,
+      "reps": 10,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 8,
+    "fields": {
+      "workout_day": 2,
+      "name": "Hammer Curls",
+      "sets": 3,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 9,
+    "fields": {
+      "workout_day": 3,
+      "name": "Shoulder Press",
+      "sets": 4,
+      "reps": 10,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 10,
+    "fields": {
+      "workout_day": 3,
+      "name": "Lateral Raise",
+      "sets": 3,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 11,
+    "fields": {
+      "workout_day": 4,
+      "name": "Treadmill",
+      "sets": 1,
+      "reps": null,
+      "duration_secs": 1800,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 12,
+    "fields": {
+      "workout_day": 4,
+      "name": "Plank",
+      "sets": 3,
+      "reps": null,
+      "duration_secs": 60,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 13,
+    "fields": {
+      "workout_day": 5,
+      "name": "Squats",
+      "sets": 4,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 14,
+    "fields": {
+      "workout_day": 5,
+      "name": "Lunges",
+      "sets": 3,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 15,
+    "fields": {
+      "workout_day": 5,
+      "name": "Leg Press",
+      "sets": 3,
+      "reps": 10,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 16,
+    "fields": {
+      "workout_day": 6,
+      "name": "Burpees",
+      "sets": 3,
+      "reps": 15,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 17,
+    "fields": {
+      "workout_day": 6,
+      "name": "Jump Rope",
+      "sets": 3,
+      "reps": null,
+      "duration_secs": 60,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 18,
+    "fields": {
+      "workout_day": 6,
+      "name": "Push Ups",
+      "sets": 4,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 19,
+    "fields": {
+      "workout_day": 7,
+      "name": "Flat Bench Press",
+      "sets": 4,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 20,
+    "fields": {
+      "workout_day": 7,
+      "name": "Incline Bench Press",
+      "sets": 4,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 21,
+    "fields": {
+      "workout_day": 7,
+      "name": "Flies",
+      "sets": 3,
+      "reps": 15,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 22,
+    "fields": {
+      "workout_day": 8,
+      "name": "Back Squats",
+      "sets": 4,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 23,
+    "fields": {
+      "workout_day": 8,
+      "name": "Front Squats",
+      "sets": 4,
+      "reps": 12,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 24,
+    "fields": {
+      "workout_day": 8,
+      "name": "Leg Extension",
+      "sets": 3,
+      "reps": 10,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 25,
+    "fields": {
+      "workout_day": 9,
+      "name": "Conventional Deadlift",
+      "sets": 4,
+      "reps": 4,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.exercise",
+    "pk": 26,
+    "fields": {
+      "workout_day": 9,
+      "name": "Romanian Deadlift",
+      "sets": 5,
+      "reps": 5,
+      "duration_secs": null,
+      "notes": ""
+    }
+  },
+  {
+    "model": "api.coachstudentassignment",
+    "pk": 1,
+    "fields": {
+      "coach": 6,
+      "student": 9,
+      "assigned_at": "2026-04-04T18:57:27.865Z"
+    }
+  },
+  {
+    "model": "api.coachstudentassignment",
+    "pk": 2,
+    "fields": {
+      "coach": 7,
+      "student": 10,
+      "assigned_at": "2026-04-04T18:57:59.389Z"
+    }
+  },
+  {
+    "model": "api.coachstudentassignment",
+    "pk": 3,
+    "fields": {
+      "coach": 8,
+      "student": 11,
+      "assigned_at": "2026-04-04T18:58:09.496Z"
+    }
+  }
+]

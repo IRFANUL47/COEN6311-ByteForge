@@ -8,9 +8,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
-from api.models import ChatRating
+from api.models import ChatRating,CoachStudentAssignment,WorkoutPlan,NutritionPlan,CustomUser,Equipment
 
-SYSTEM_PROMPT = """
+STATIC_SYSTEM_PROMPT = """
 You are CUFitness Assistant, a helpful chatbot for CUFitness — a gym management platform built for Concordia University students.
 
 CUFitness is based on Concordia's real gym: Le Gym, located at Room EV-S2-206, 1455 De Maisonneuve Blvd. W., in the Engineering & Visual Arts Building on the Sir George Williams Campus.
@@ -82,7 +82,7 @@ For refund requests or payment issues, contact: legym@concordia.ca
 - Dietary Restrictions: Add or remove your dietary restrictions so the platform can personalize your nutrition plans
 
 == USER ROLES ==
-- Student: Can use the platform to track fitness, view equipment, manage dietary restrictions, view nutrition plans, and book coaching sessions (coming soon)
+- Student: Can use the platform to track fitness, view equipment, manage dietary restrictions, view nutrition plans, and book coaching sessions
 - Coach: Must register and wait for Admin approval before their account is activated
 - Admin: Manages the platform, approves coach accounts, and manages equipment
 
@@ -96,7 +96,7 @@ CUFitness offers nutrition plans users can view and manage. You can browse avail
 Users can manage dietary restrictions directly on the platform. Add restrictions (e.g. gluten-free, vegan, lactose intolerant), remove them, or view your current list. Coaches and admins can also view restrictions by student Concordia ID.
 
 == BOOKING & CANCELLATION (COMING SOON) ==
-Booking coaching sessions online is coming in a future sprint. For now, contact Le Gym directly at legym@concordia.ca or call 514-848-2424 ext. 3860.
+Students can book sessions with their assigned coach through the platform. Contact Le Gym directly at legym@concordia.ca or call 514-848-2424 ext. 3860 for further help
 
 == OUTSIDE PERSONAL TRAINERS ==
 Only Concordia-employed Le Gym personal trainers are allowed to train clients inside the facility. Outside personal trainers are strictly prohibited. Le Gym trainers have priority access to any equipment for personal training clients.
@@ -104,13 +104,8 @@ Only Concordia-employed Le Gym personal trainers are allowed to train clients in
 == PRIVACY ==
 Only the user and admins can access personal profile information like height, weight, and dietary restrictions on CUFitness.
 
-== FEATURES COMING IN FUTURE SPRINTS ==
-- Booking coaching sessions online
-- Personalized workout plans
-- Fitness goal setting
 
 Keep answers short, friendly, and helpful.
-If someone asks about a feature not yet built, let them know it is coming soon and provide Le Gym contact info.
 If a question is unrelated to fitness or CUFitness, politely redirect the user.
 Never make up information you are unsure about.
 If the user writes in French, respond entirely in French. Always reply in the same language the user is writing in.
@@ -119,6 +114,143 @@ If the user's question is serious, complex, or they ask to speak to a human, dir
 - Email: legym@concordia.ca
 - In person: Room EV-S2-206, EV Building, Sir George Williams Campus
 """.strip()
+
+
+def build_student_context(user):
+    lines = []
+    lines.append("== STUDENT PERSONAL INFO ==")
+    lines.append(f"Name: {user.first_name} {user.last_name}")
+    lines.append(f"Username: {user.username}")
+    lines.append(f"Concordia ID: {user.concordia_id}")
+    lines.append(f"Age: {user.age or 'Not provided'}")
+    lines.append(f"Gender: {user.gender or 'Not provided'}")
+    lines.append(f"Height: {user.height or 'Not provided'} cm")
+    lines.append(f"Weight: {user.weight or 'Not provided'} kg")
+
+    restrictions = user.dietary_restrictions.all()
+    if restrictions:
+        lines.append("Dietary Restrictions: " + ", ".join([r.display_name for r in restrictions]))
+    else:
+        lines.append("Dietary Restrictions: None")
+
+    try:
+        assignment = CoachStudentAssignment.objects.get(student=user)
+        coach = assignment.coach
+        lines.append("== ASSIGNED COACH ==")
+        lines.append(f"Name: {coach.first_name} {coach.last_name}")
+        lines.append(f"Username: {coach.username}")
+        lines.append(f"Email: {coach.email}")
+    except CoachStudentAssignment.DoesNotExist:
+        lines.append("== ASSIGNED COACH ==")
+        lines.append("No coach assigned yet.")
+
+    workout_plans = WorkoutPlan.objects.filter(student=user).prefetch_related("days__exercises")
+    if workout_plans:
+        lines.append("== WORKOUT PLANS ==")
+        for plan in workout_plans:
+            lines.append(f"Plan: {plan.title} | Goal: {plan.goal} | Active: {plan.is_active}")
+            for day in plan.days.all():
+                lines.append(f"  Day {day.day_number} - {day.label}:")
+                for ex in day.exercises.all():
+                    lines.append(f"    - {ex.name}: {ex.sets} sets x {ex.reps} reps")
+    else:
+        lines.append("== WORKOUT PLANS ==")
+        lines.append("No workout plans assigned yet.")
+
+    nutrition_plans = NutritionPlan.objects.filter(student=user)
+    if nutrition_plans:
+        lines.append("== NUTRITION PLANS ==")
+        for plan in nutrition_plans:
+            lines.append(f"Plan: {plan.title} | Calories: {plan.calories_target} | Protein: {plan.protein_g}g | Carbs: {plan.carbs_g}g | Fats: {plan.fats_g}g")
+            if plan.notes:
+                lines.append(f"  Notes: {plan.notes}")
+    else:
+        lines.append("== NUTRITION PLANS ==")
+        lines.append("No nutrition plans assigned yet.")
+
+    return "\n".join(lines)
+
+
+def build_coach_context(user):
+    lines = []
+    lines.append("== COACH PERSONAL INFO ==")
+    lines.append(f"Name: {user.first_name} {user.last_name}")
+    lines.append(f"Username: {user.username}")
+    lines.append(f"Concordia ID: {user.concordia_id}")
+
+    assignments = CoachStudentAssignment.objects.filter(coach=user).select_related("student")
+    if assignments:
+        lines.append("== ASSIGNED STUDENTS ==")
+        for a in assignments:
+            student = a.student
+            lines.append(f"Student: {student.first_name} {student.last_name} (ID: {student.concordia_id})")
+            restrictions = student.dietary_restrictions.all()
+            if restrictions:
+                lines.append(f"  Dietary Restrictions: " + ", ".join([r.display_name for r in restrictions]))
+            else:
+                lines.append(f"  Dietary Restrictions: None")
+
+            workout_plans = WorkoutPlan.objects.filter(student=student, coach=user).prefetch_related("days__exercises")
+            if workout_plans:
+                for plan in workout_plans:
+                    lines.append(f"  Workout Plan: {plan.title} | Goal: {plan.goal} | Active: {plan.is_active}")
+            else:
+                lines.append(f"  Workout Plan: None assigned yet")
+
+            nutrition_plans = NutritionPlan.objects.filter(student=student, coach=user)
+            if nutrition_plans:
+                for plan in nutrition_plans:
+                    lines.append(f"  Nutrition Plan: {plan.title} | Calories: {plan.calories_target} | Protein: {plan.protein_g}g | Carbs: {plan.carbs_g}g | Fats: {plan.fats_g}g")
+            else:
+                lines.append(f"  Nutrition Plan: None assigned yet")
+    else:
+        lines.append("== ASSIGNED STUDENTS ==")
+        lines.append("No students assigned yet.")
+
+    return "\n".join(lines)
+
+
+def build_admin_context():
+    lines = []
+
+    pending_coaches = CustomUser.objects.filter(role=CustomUser.Role.COACH, is_approved=False, is_active=True)
+    lines.append("== PENDING COACH APPROVALS ==")
+    if pending_coaches:
+        for coach in pending_coaches:
+            lines.append(f"- {coach.first_name} {coach.last_name} (Username: {coach.username}, ID: {coach.concordia_id})")
+    else:
+        lines.append("No pending coach approvals.")
+
+    equipment_list = Equipment.objects.all()
+    lines.append("== EQUIPMENT IN THE GYM ==")
+    if equipment_list:
+        for eq in equipment_list:
+            lines.append(f"- {eq.name} | Category: {eq.category} | Quantity: {eq.quantity}")
+    else:
+        lines.append("No equipment registered yet.")
+
+    total_students = CustomUser.objects.filter(role=CustomUser.Role.STUDENT).count()
+    total_coaches = CustomUser.objects.filter(role=CustomUser.Role.COACH, is_approved=True).count()
+    lines.append("== PLATFORM STATS ==")
+    lines.append(f"Total Students: {total_students}")
+    lines.append(f"Total Approved Coaches: {total_coaches}")
+
+    return "\n".join(lines)
+
+
+def build_dynamic_prompt(user):
+    role = getattr(user, "role", None)
+    context = ""
+
+    if role == CustomUser.Role.STUDENT:
+        context = build_student_context(user)
+    elif role == CustomUser.Role.COACH:
+        context = build_coach_context(user)
+    elif role == CustomUser.Role.ADMIN:
+        context = build_admin_context()
+
+    return STATIC_SYSTEM_PROMPT + "\n\n" + context
+
 
 
 @api_view(["POST"])
@@ -144,6 +276,7 @@ def chat(request):
             {"error": "AI service is not configured. Please contact the administrator."},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
         )
+    dynamic_prompt = build_dynamic_prompt(request.user)
 
     url = (
         "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -152,7 +285,7 @@ def chat(request):
 
     payload = {
         "system_instruction": {
-            "parts": [{"text": SYSTEM_PROMPT}]
+            "parts": [{"text": dynamic_prompt}]
         },
         "contents": [
             {

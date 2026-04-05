@@ -9,6 +9,11 @@ const emptyExercise = () => ({ name: '', sets: '', reps: '', duration_secs: '', 
 const emptyDays = () =>
   DAYS.map((label, i) => ({ day_number: i + 1, label, notes: '', exercises: [], enabled: false }));
 
+const isExpired = (plan) => {
+  if (!plan.end_date) return false;
+  return new Date(plan.end_date) < new Date(new Date().toDateString());
+};
+
 const formatExercise = (ex) => {
   const hasSets = ex.sets != null && ex.sets !== '';
   const hasReps = ex.reps != null && ex.reps !== '';
@@ -215,7 +220,8 @@ function WorkoutPlans() {
   const [loading, setLoading] = useState(true);
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('ALL');
+  // Default to ACTIVE
+  const [statusFilter, setStatusFilter] = useState('ACTIVE');
 
   const [showLookup, setShowLookup] = useState(false);
   const [concordiaInput, setConcordiaInput] = useState('');
@@ -268,9 +274,7 @@ function WorkoutPlans() {
       plan.student?.concordia_id?.includes(q) ||
       plan.coach?.name?.toLowerCase().includes(q);
     const matchesStatus =
-      statusFilter === 'ALL' ||
-      (statusFilter === 'ACTIVE' && plan.is_active) ||
-      (statusFilter === 'INACTIVE' && !plan.is_active);
+      (statusFilter === 'ACTIVE' && plan.is_active) || (statusFilter === 'INACTIVE' && !plan.is_active);
     return matchesSearch && matchesStatus;
   });
 
@@ -449,7 +453,7 @@ function WorkoutPlans() {
           onChange={(e) => setSearch(e.target.value)}
           style={{ maxWidth: 320, fontSize: '0.88rem' }}
         />
-        {['ALL', 'ACTIVE', 'INACTIVE'].map((s) => (
+        {['ACTIVE', 'INACTIVE'].map((s) => (
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
@@ -465,7 +469,7 @@ function WorkoutPlans() {
               fontWeight: statusFilter === s ? 600 : 400,
             }}
           >
-            {s === 'ALL' ? 'All' : s === 'ACTIVE' ? 'Active' : 'Inactive'}
+            {s === 'ACTIVE' ? 'Active' : 'Inactive'}
           </button>
         ))}
       </div>
@@ -478,7 +482,9 @@ function WorkoutPlans() {
             ? isCoach
               ? 'You have not assigned any plans yet.'
               : 'No workout plan assigned to you yet.'
-            : 'No plans match your search.'}
+            : statusFilter === 'ACTIVE'
+              ? 'No active plans.'
+              : 'No inactive plans.'}
         </p>
       ) : (
         <Row className='g-4'>
@@ -757,23 +763,32 @@ function WorkoutPlans() {
                 )}
                 {isCoach && (
                   <div className='d-flex justify-content-between align-items-center'>
-                    <Form.Check
-                      type='switch'
-                      label={selectedPlan.is_active ? 'Active' : 'Inactive'}
-                      checked={selectedPlan.is_active}
-                      onChange={async () => {
-                        try {
-                          await api.patch(`/workout-plans/${selectedPlan.id}/update/`, {
-                            is_active: !selectedPlan.is_active,
-                          });
-                          setSelectedPlan({ ...selectedPlan, is_active: !selectedPlan.is_active });
-                          fetchPlans();
-                        } catch {
-                          setError('Failed to update plan status.');
+                    <div className='d-flex align-items-center gap-2'>
+                      <Form.Check
+                        type='switch'
+                        label={selectedPlan.is_active ? 'Active' : 'Inactive'}
+                        checked={selectedPlan.is_active}
+                        disabled={isExpired(selectedPlan) && !selectedPlan.is_active}
+                        title={
+                          isExpired(selectedPlan) && !selectedPlan.is_active ? 'Cannot activate an expired plan' : ''
                         }
-                      }}
-                      style={{ fontSize: '0.9rem' }}
-                    />
+                        onChange={async () => {
+                          try {
+                            await api.patch(`/workout-plans/${selectedPlan.id}/update/`, {
+                              is_active: !selectedPlan.is_active,
+                            });
+                            setSelectedPlan({ ...selectedPlan, is_active: !selectedPlan.is_active });
+                            fetchPlans();
+                          } catch (err) {
+                            setError(err.response?.data?.detail || 'Failed to update plan status.');
+                          }
+                        }}
+                        style={{ fontSize: '0.9rem' }}
+                      />
+                      {isExpired(selectedPlan) && (
+                        <span style={{ fontSize: '0.75rem', color: '#912338' }}>Expired</span>
+                      )}
+                    </div>
                     <div className='d-flex gap-2'>
                       <Button variant='outline-secondary' size='sm' style={{ fontSize: '0.82rem' }} onClick={openEdit}>
                         Edit Plan
