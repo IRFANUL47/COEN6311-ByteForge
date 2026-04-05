@@ -4,6 +4,7 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from django.utils import timezone
 from datetime import timedelta
+from django.core import mail
 
 from api.models import BookingRequest, CoachStudentAssignment, CoachAvailability, Conversation, Message, Notification
 
@@ -152,6 +153,7 @@ class AdminApprovalTests(TestCase):
             username="pending1",
             password="pw",
             concordia_id="P001",
+            email="pending1@example.com",
             is_approved=False,
             is_active=True,
         )
@@ -168,20 +170,24 @@ class AdminApprovalTests(TestCase):
 
     def test_admin_can_approve_user_and_user_can_login(self):
         self.client.force_authenticate(self.admin)
-        resp = self.client.post(reverse("admin-pending-user-approve", args=[self.pending.pk]))
+        resp = self.client.patch(reverse("admin-pending-user-approve", args=[self.pending.pk]))
         self.assertEqual(resp.status_code, 200)
         self.pending.refresh_from_db()
         self.assertTrue(self.pending.is_approved)
         self.assertTrue(self.pending.is_active)
         self.assertTrue(Notification.objects.filter(recipient=self.pending).exists())
+        # Check that an email was sent
+        self.assertGreaterEqual(len(mail.outbox), 1)
 
     def test_admin_can_reject_user_and_user_cannot_login(self):
         self.client.force_authenticate(self.admin)
-        resp = self.client.post(reverse("admin-pending-user-reject", args=[self.pending.pk]))
+        resp = self.client.patch(reverse("admin-pending-user-reject", args=[self.pending.pk]))
         self.assertEqual(resp.status_code, 200)
         self.pending.refresh_from_db()
         self.assertFalse(self.pending.is_active)
         self.assertTrue(Notification.objects.filter(recipient=self.pending).exists())
+        # Check that an email was sent
+        self.assertGreaterEqual(len(mail.outbox), 1)
 
     def test_unapproved_user_cannot_login(self):
         # Attempt to call login endpoint with pending user's credentials
