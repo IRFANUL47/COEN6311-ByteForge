@@ -31,8 +31,11 @@ function Login() {
       } else {
         updateDietaryRestrictions([]);
       }
-
-      navigate('/dashboard');
+      if (response.data.user.role === 'ADMIN') {
+        navigate('/admin/pending');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.detail || 'Login failed. Please try again.');
     } finally {

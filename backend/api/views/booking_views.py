@@ -53,16 +53,16 @@ def _purge_old_slots():
 @permission_classes([IsAuthenticated])
 def coach_list(request):
     """
-    Student browses all approved/active coaches.
+    Students and admins can browse all approved/active coaches.
     Shows whether each coach has available slots.
     """
     user = request.user
-    if getattr(user, "role", None) != CustomUser.Role.STUDENT:
+    if getattr(user, "role", None) not in (CustomUser.Role.STUDENT, CustomUser.Role.ADMIN):
         return Response(
-            {"detail": "Only students can browse coaches."},
+            {"detail": "Only students and admins can browse coaches."},
             status=status.HTTP_403_FORBIDDEN
         )
-
+ 
     coaches = CustomUser.objects.filter(
         role=CustomUser.Role.COACH,
         is_approved=True,
