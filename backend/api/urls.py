@@ -66,4 +66,7 @@ urlpatterns = [
     path("conversations/<int:conversation_id>/messages/", views.conversation_messages, name ="conversation-messages"),
     path("conversations/<int:conversation_id>/messages/read/", views.conversation_mark_read, name="conversation-mark-read"),
 
+    path("admin/pending-users/", views.pending_users_list, name="admin-pending-users-list"),
+    path("admin/pending-users/<int:user_id>/approve/", views.approve_user, name="admin-pending-user-approve"),
+    path("admin/pending-users/<int:user_id>/reject/", views.reject_user, name="admin-pending-user-reject"), 
 ]
