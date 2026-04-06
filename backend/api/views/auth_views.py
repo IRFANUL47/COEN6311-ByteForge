@@ -33,21 +33,37 @@ def login(request):
     concordia_id = serializer.validated_data["concordia_id"]
     password = serializer.validated_data["password"]
 
-    user = authenticate(request, username=concordia_id, password=password)
-    if user is None:
+    # Check user exists and password is correct first, before calling authenticate().
+    # authenticate() returns None for inactive users (is_active=False) with no way
+    # to distinguish wrong password from pending approval — so we check manually.
+    try:
+        user_obj = User.objects.get(concordia_id=concordia_id)
+    except User.DoesNotExist:
         return Response(
             {"detail": "Invalid credentials."},
             status=status.HTTP_401_UNAUTHORIZED,
         )
 
-    # NEW: Prevent login for users who are not approved yet
-    if not getattr(user, "is_approved", False):
+    if not user_obj.check_password(password):
         return Response(
-            {
-                "detail": "account_pending_approval",
-                "message": "Your account is pending administrator approval. You cannot log in yet.",
-            },
+            {"detail": "Invalid credentials."},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    # Admins bypass the approval gate entirely.
+    # Students and coaches must be approved before they can log in.
+    if user_obj.role != User.Role.ADMIN and not user_obj.is_approved:
+        return Response(
+            {"detail": "Your account is pending approval by an administrator. You will receive an email once it has been reviewed."},
             status=status.HTTP_403_FORBIDDEN,
+        )
+
+    # Fully authenticate via Django (handles is_active and any auth backends)
+    user = authenticate(request, username=concordia_id, password=password)
+    if user is None:
+        return Response(
+            {"detail": "Invalid credentials."},
+            status=status.HTTP_401_UNAUTHORIZED,
         )
 
     height = float(user.height) if user.height else None

@@ -31,6 +31,14 @@ function AppNavbar() {
                     Home
                   </Link>
                 )}
+                {isAdmin && (
+                  <Link
+                    to='/admin/pending'
+                    className={`cu-nav-link ${location.pathname === '/admin/pending' ? 'active' : ''}`}
+                  >
+                    Pending Approvals
+                  </Link>
+                )}
                 <Link to='/sessions' className={`cu-nav-link ${location.pathname === '/sessions' ? 'active' : ''}`}>
                   Sessions
                 </Link>

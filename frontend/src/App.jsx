@@ -12,6 +12,7 @@ import NutritionPlans from './pages/NutritionPlans';
 import WorkoutPlans from './pages/WorkoutPlans';
 import ChatWidget from './components/ChatWidget';
 import Messages from './pages/Messages';
+import AdminPendingUsers from './pages/AdminPendingUsers';
 
 function HomeRedirect() {
   const { user } = useAuth();
@@ -32,6 +33,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path='/admin/pending'
+          element={
+            <ProtectedRoute>
+              <AdminPendingUsers />
             </ProtectedRoute>
           }
         />
@@ -67,7 +76,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path='/profile'
           element={

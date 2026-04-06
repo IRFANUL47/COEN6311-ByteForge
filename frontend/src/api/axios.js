@@ -16,7 +16,13 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+
+    const isAuthEndpoint =
+      original.url?.includes('/auth/login/') ||
+      original.url?.includes('/auth/token/refresh/') ||
+      original.url?.includes('/auth/register/');
+
+    if (error.response?.status === 401 && !original._retry && !isAuthEndpoint) {
       original._retry = true;
       try {
         const tokens = JSON.parse(localStorage.getItem('tokens'));
