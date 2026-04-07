@@ -294,20 +294,40 @@ export default function ChatWidget() {
             }}
           >
             <span>🏋️ CUFitness Assistant</span>
-            <button
-              onClick={() => setOpen(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#fff',
-                fontSize: '18px',
-                cursor: 'pointer',
-                lineHeight: 1,
-                padding: 0,
-              }}
-            >
-              ×
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={() =>
+                  setMessages([{ role: 'bot', text: buildGreeting(user), timestamp: formatTime(new Date()) }])
+                }
+                title='Clear chat'
+                style={{
+                  background: 'none',
+                  border: '1px solid rgba(255,255,255,0.4)',
+                  color: '#fff',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  padding: '3px 8px',
+                  fontWeight: '500',
+                }}
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  lineHeight: 1,
+                  padding: 0,
+                }}
+              >
+                ×
+              </button>
+            </div>
           </div>
 
           <div
