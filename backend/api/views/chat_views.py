@@ -98,8 +98,8 @@ CUFitness offers nutrition plans users can view and manage. You can browse avail
 == DIETARY RESTRICTIONS ==
 Users can manage dietary restrictions directly on the platform. Add restrictions (e.g. gluten-free, vegan, lactose intolerant), remove them, or view your current list. Coaches and admins can also view restrictions by student Concordia ID.
 
-== BOOKING & CANCELLATION (COMING SOON) ==
-Students can book sessions with their assigned coach through the platform. Contact Le Gym directly at legym@concordia.ca or call 514-848-2424 ext. 3860 for further help
+== BOOKING & CANCELLATION ==
+ Students can book sessions with their assigned coach directly through the CUFitness platform. You can view available slots, send booking requests, and track their status. Contact Le Gym at legym@concordia.ca or call 514-848-2424 ext. 3860 for further help.
 
 == OUTSIDE PERSONAL TRAINERS ==
 Only Concordia-employed Le Gym personal trainers are allowed to train clients inside the facility. Outside personal trainers are strictly prohibited. Le Gym trainers have priority access to any equipment for personal training clients.
