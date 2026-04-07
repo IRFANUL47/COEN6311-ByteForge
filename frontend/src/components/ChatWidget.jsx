@@ -2,6 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 import api from '../api/axios';
 import { useAuth } from '../context/auth/useAuth';
 
+const bounceStyle = `
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+  }
+`;
+
 function formatTime(date) {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
@@ -259,6 +266,7 @@ export default function ChatWidget() {
 
   return (
     <div style={{ position: 'fixed', bottom: '24px', right: '24px', zIndex: 9999 }}>
+      <style>{bounceStyle}</style>
       {open && (
         <div
           style={{
@@ -286,20 +294,40 @@ export default function ChatWidget() {
             }}
           >
             <span>🏋️ CUFitness Assistant</span>
-            <button
-              onClick={() => setOpen(false)}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#fff',
-                fontSize: '18px',
-                cursor: 'pointer',
-                lineHeight: 1,
-                padding: 0,
-              }}
-            >
-              ×
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                onClick={() =>
+                  setMessages([{ role: 'bot', text: buildGreeting(user), timestamp: formatTime(new Date()) }])
+                }
+                title='Clear chat'
+                style={{
+                  background: 'none',
+                  border: '1px solid rgba(255,255,255,0.4)',
+                  color: '#fff',
+                  fontSize: '11px',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  padding: '3px 8px',
+                  fontWeight: '500',
+                }}
+              >
+                Clear
+              </button>
+              <button
+                onClick={() => setOpen(false)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '18px',
+                  cursor: 'pointer',
+                  lineHeight: 1,
+                  padding: 0,
+                }}
+              >
+                ×
+              </button>
+            </div>
           </div>
 
           <div
@@ -316,7 +344,44 @@ export default function ChatWidget() {
               <MessageBubble key={i} msg={m} prevUserMessage={getPrevUserMessage(messages, i)} />
             ))}
             {loading && (
-              <div style={{ color: '#bbb', fontSize: '13px', fontStyle: 'italic' }}>Assistant is typing…</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                  <span
+                    style={{
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '50%',
+                      background: '#912338',
+                      display: 'inline-block',
+                      animation: 'bounce 1s infinite',
+                      animationDelay: '0s',
+                    }}
+                  ></span>
+                  <span
+                    style={{
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '50%',
+                      background: '#912338',
+                      display: 'inline-block',
+                      animation: 'bounce 1s infinite',
+                      animationDelay: '0.2s',
+                    }}
+                  ></span>
+                  <span
+                    style={{
+                      width: '7px',
+                      height: '7px',
+                      borderRadius: '50%',
+                      background: '#912338',
+                      display: 'inline-block',
+                      animation: 'bounce 1s infinite',
+                      animationDelay: '0.4s',
+                    }}
+                  ></span>
+                </div>
+                <span style={{ color: '#bbb', fontSize: '12px', fontStyle: 'italic' }}>Assistant is typing</span>
+              </div>
             )}
             <div ref={bottomRef} />
           </div>
