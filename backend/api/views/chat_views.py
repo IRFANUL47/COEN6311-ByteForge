@@ -40,6 +40,9 @@ Email: legym@concordia.ca
 Prices do not include tax. Payments accepted by VISA and MasterCard only.
 For refund requests or payment issues, contact: legym@concordia.ca
 
+== BOOKING ==
+-Students can book sessions with their assigned coach directly through the CUFitness platform. You can view available slots, send booking requests, and track their status. Contact Le Gym at legym@concordia.ca or call 514-848-2424 ext. 3860 for further help.
+
 == CANCELLATION POLICY ==
 - Sessions cancelled within 24 hours are withdrawn with no refund.
 - Sessions rescheduled before 24 hours receive a full refund minus a $6 admin fee.
