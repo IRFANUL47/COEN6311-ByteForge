@@ -53,6 +53,26 @@ VSCode:
 
 1. Open the project in VS Code and install the recommended extensions when prompted, or go to the Extensions panel, filter by **Recommended**, and install them all.
 
+LLM Chatbot Setup (Gemini API):
+1. Go to https://aistudio.google.com/app/apikey and create a free Gemini API key
+2. Inside the backend folder, create a file named '.env'
+3. Inside the .env file add this line: GEMINI_API_KEY=your_api_key_here
+4. Replace 'your_api_key_here' with your actual Gemini API key
+5. The chatbot will now work when you run the backend server
+
+Loading Test Data:
+1. Make sure you have already run 'python manage.py migrate'
+2. Run this command: 'python manage.py loaddata api/fixtures/initial_data.json'
+3. This will load all test users, coaches, students, workout plans, nutrition plans, equipment and assignments into your database
+4. Test accounts:
+   - Student: Concordia ID: 9876 | Password: student1
+   - Student: Concordia ID: 98765 | Password: student2
+   - Student: Concordia ID: 987654 | Password: student3
+   - Coach: Concordia ID: 12345 | Password: coach123
+   - Coach: Concordia ID: 123456 | Password: coach1234
+   - Coach: Concordia ID: 1234567 | Password: coach12345
+   - Admin: Username: admin | Password: admin123
+
 Long-Term Vision
 CUFitness is designed to be scalable beyond Concordia University and adaptable to other university gym environments. Future improvements include advanced analytics, AI-powered recommendations, and enhanced scheduling intelligence.
 
